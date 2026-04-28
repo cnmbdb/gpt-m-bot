@@ -37,7 +37,7 @@ class ImageService:
 
         return output_path, result.stdout.strip()
 
-    def generate_direct(self, prompt: str, model: str = "gpt-image-2", size: str = "1024x1024") -> bytes:
+    def generate_direct(self, prompt: str, model: str = "gpt-image-1", size: str = "1024x1024") -> bytes:
         if not config.OPENAI_API_KEY:
             raise RuntimeError("OPENAI_API_KEY not configured")
 
@@ -45,9 +45,8 @@ class ImageService:
             "model": model,
             "prompt": prompt,
             "n": 1,
-            "response_format": "b64_json",
         }
-        if model == "gpt-image-2":
+        if model == "gpt-image-1.5":
             payload["size"] = size
 
         response = requests.post(
@@ -61,16 +60,25 @@ class ImageService:
         )
 
         if response.status_code != 200:
-            raise RuntimeError(f"API error {response.status_code}: {response.text}")
+            raise RuntimeError(f"API error {response.status_code}: {response.text[:200]}")
 
         data = response.json()
         if "error" in data:
             raise RuntimeError(data["error"].get("message", str(data["error"])))
 
-        b64 = data["data"][0]["b64_json"]
-        return base64.b64decode(b64)
+        b64 = data["data"][0].get("b64_json")
+        if b64:
+            return base64.b64decode(b64)
+        
+        url = data["data"][0].get("url")
+        if url:
+            img_resp = requests.get(url, timeout=60)
+            img_resp.raise_for_status()
+            return img_resp.content
+        
+        raise RuntimeError("No image data (b64_json or url) in response")
 
-    def edit_image(self, image_source, instruction: str, model: str = "gpt-image-2") -> bytes:
+    def edit_image(self, image_source, instruction: str, model: str = "gpt-image-1") -> bytes:
         """Edit an image based on instruction. image_source can be a file path or bytes."""
         if not config.OPENAI_API_KEY:
             raise RuntimeError("OPENAI_API_KEY not configured")
@@ -81,28 +89,21 @@ class ImageService:
         else:
             image_bytes = image_source.getvalue() if hasattr(image_source, "getvalue") else image_source
 
-        image_b64 = base64.b64encode(image_bytes).decode("utf-8")
-
-        payload = {
-            "model": "gpt-image-2/edit",
-            "prompt": instruction,
-            "images": [image_b64],
-            "n": 1,
-            "response_format": "b64_json",
-        }
+        actual_model = model if model not in ("gpt-image-2",) else "gpt-image-1"
+        # 支持的模型: gpt-image-1, gpt-image-1.5, gpt-image-1-mini
+        if actual_model not in ("gpt-image-1", "gpt-image-1.5", "gpt-image-1-mini", "chatgpt-image-latest"):
+            actual_model = "gpt-image-1"
 
         response = requests.post(
             "https://api.openai.com/v1/images/edits",
-            headers={
-                "Authorization": f"Bearer {config.OPENAI_API_KEY}",
-                "Content-Type": "application/json",
-            },
-            json=payload,
+            headers={"Authorization": f"Bearer {config.OPENAI_API_KEY}"},
+            data={"model": actual_model, "prompt": instruction, "n": 1},
+            files={"image": ("image.png", image_bytes, "image/png")},
             timeout=120,
         )
 
         if response.status_code != 200:
-            raise RuntimeError(f"API error {response.status_code}: {response.text}")
+            raise RuntimeError(f"API error {response.status_code}: {response.text[:200]}")
 
         data = response.json()
         if "error" in data:

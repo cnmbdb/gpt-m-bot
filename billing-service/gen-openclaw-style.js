@@ -77,11 +77,24 @@ async function generateImage(prompt, outputPath) {
     throw new Error(response.error.message || JSON.stringify(response.error));
   }
 
-  if (!response.data || !response.data[0] || !response.data[0].b64_json) {
+  if (!response.data || !response.data[0]) {
     throw new Error('No image data returned from API');
   }
 
-  const imageData = Buffer.from(response.data[0].b64_json, 'base64');
+  const imageDataField = response.data[0].b64_json || response.data[0].url;
+  if (!imageDataField) {
+    throw new Error('No b64_json or url in response');
+  }
+
+  let imageData;
+  if (response.data[0].b64_json) {
+    imageData = Buffer.from(response.data[0].b64_json, 'base64');
+  } else {
+    // Download from URL
+    imageData = await downloadImage(response.data[0].url, outputPath);
+    console.error(`[GEN] Image downloaded from URL`);
+    return imageData;
+  }
   fs.writeFileSync(outputPath, imageData);
   console.error(`[GEN] Image saved to: ${outputPath}`);
   return outputPath;

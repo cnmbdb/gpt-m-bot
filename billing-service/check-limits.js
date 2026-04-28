@@ -28,9 +28,9 @@ if (ADMIN_IDS.includes(userId)) {
 const data = loadData();
 const user = data.users[userId];
 
-// New user (no balance record yet) -> allowed
-if (!user) {
-  console.log(JSON.stringify({ allowed: true }));
+// New user or zero balance -> not allowed (must claim bonus first)
+if (!user || user.balance < 50) {
+  console.log(JSON.stringify({ allowed: false, reason: 'daily_limit', balance: user ? user.balance : 0 }));
   process.exit(0);
 }
 

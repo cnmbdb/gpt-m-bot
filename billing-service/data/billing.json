@@ -2,13 +2,13 @@
   "users": {
     "825512163": {
       "id": "825512163",
-      "balance": 50,
+      "balance": 250,
       "bonusClaimed": true,
       "createdAt": 1777369752478
     },
     "8277934317": {
       "id": "8277934317",
-      "balance": 50,
+      "balance": 1000,
       "bonusClaimed": true,
       "createdAt": 1777369829282
     }
@@ -23,6 +23,17 @@
       "status": "expired",
       "createdAt": 1777369882676,
       "expiresAt": 1777370782676,
+      "txHash": null
+    },
+    "ORDER_1777386640090_05djls": {
+      "id": "ORDER_1777386640090_05djls",
+      "userId": "8277934317",
+      "amount": 4,
+      "coin": "USDT",
+      "credits": 400,
+      "status": "expired",
+      "createdAt": 1777386640090,
+      "expiresAt": 1777387540090,
       "txHash": null
     }
   }

@@ -1,0 +1,100 @@
+[
+  {
+    "id": "TX_1777392466043_rwmr",
+    "userId": "825512163",
+    "type": "deduct",
+    "amount": 50,
+    "reason": "image_edit_gt",
+    "createdAt": 1777392466043
+  },
+  {
+    "id": "TX_1777392131104_6wj4",
+    "userId": "8277934317",
+    "type": "refund",
+    "amount": 50,
+    "reason": "edit_failed",
+    "createdAt": 1777392131104
+  },
+  {
+    "id": "TX_1777392131099_hgwc",
+    "userId": "8277934317",
+    "type": "deduct",
+    "amount": 50,
+    "reason": "image_edit_gt",
+    "createdAt": 1777392131099
+  },
+  {
+    "id": "TX_1777392103317_i87i",
+    "userId": "8277934317",
+    "type": "refund",
+    "amount": 50,
+    "reason": "edit_failed",
+    "createdAt": 1777392103317
+  },
+  {
+    "id": "TX_1777392103309_kmlw",
+    "userId": "8277934317",
+    "type": "deduct",
+    "amount": 50,
+    "reason": "image_edit_gt",
+    "createdAt": 1777392103309
+  },
+  {
+    "id": "TX_1777391911557_fij6",
+    "userId": "8277934317",
+    "type": "deduct",
+    "amount": 50,
+    "reason": "image_generation_sc",
+    "createdAt": 1777391911557
+  },
+  {
+    "id": "TX_1777391610287_155a",
+    "userId": "825512163",
+    "type": "deduct",
+    "amount": 50,
+    "reason": "image_generation_sc",
+    "createdAt": 1777391610288
+  },
+  {
+    "id": "TX_1777390685632_ds22",
+    "userId": "825512163",
+    "type": "refund",
+    "amount": 100,
+    "reason": "generation_failed",
+    "createdAt": 1777390685632
+  },
+  {
+    "id": "TX_1777390684296_fcz7",
+    "userId": "825512163",
+    "type": "deduct",
+    "amount": 100,
+    "reason": "image_generation_sc",
+    "createdAt": 1777390684297
+  },
+  {
+    "id": "TX_1777386640092_zcac",
+    "userId": "8277934317",
+    "type": "recharge",
+    "amount": 4,
+    "reason": "USDT deposit",
+    "createdAt": 1777386640092,
+    "orderId": "ORDER_1777386640090_05djls",
+    "coin": "USDT"
+  },
+  {
+    "id": "TX_1777384982934_ahr9",
+    "userId": "825512163",
+    "type": "refund",
+    "amount": 100,
+    "reason": "generation_failed",
+    "createdAt": 1777384982934
+  },
+  {
+    "id": "TX_1777384981685_xrk1",
+    "userId": "825512163",
+    "type": "deduct",
+    "amount": 100,
+    "reason": "image_generation_sc",
+    "createdAt": 1777384981685
+  }
+]
