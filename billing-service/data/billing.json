@@ -1,0 +1,29 @@
+{
+  "users": {
+    "825512163": {
+      "id": "825512163",
+      "balance": 50,
+      "bonusClaimed": true,
+      "createdAt": 1777369752478
+    },
+    "8277934317": {
+      "id": "8277934317",
+      "balance": 50,
+      "bonusClaimed": true,
+      "createdAt": 1777369829282
+    }
+  },
+  "orders": {
+    "ORDER_1777369882676_0z80lp": {
+      "id": "ORDER_1777369882676_0z80lp",
+      "userId": "8277934317",
+      "amount": 10,
+      "coin": "USDT",
+      "credits": 1000,
+      "status": "expired",
+      "createdAt": 1777369882676,
+      "expiresAt": 1777370782676,
+      "txHash": null
+    }
+  }
+}
