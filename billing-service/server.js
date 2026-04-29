@@ -14,7 +14,7 @@ const CONFIG = {
   trc20Address: 'TKYp9dbDs6kHKtFhFR6srEJvDARNYkq9Qe',
   rechargeRate: 100,
   imageCost: 50,
-  newUserBonus: 50,
+  newUserBonus: 100,
   referralBonus: 300,
   referralMinRecharge: 10,
   pollInterval: 5000,
