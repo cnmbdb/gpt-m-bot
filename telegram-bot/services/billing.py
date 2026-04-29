@@ -42,6 +42,9 @@ class BillingService:
     def refund(self, user_id: str, amount: int, reason: str = "") -> dict:
         return self._post("/refund", {"userId": user_id, "amount": amount, "reason": reason})
 
+    def add_balance(self, user_id: str, amount: int) -> dict:
+        return self._post("/add-balance", {"userId": user_id, "amount": amount})
+
     def claim_bonus(self, user_id: str) -> dict:
         return self._post("/claim-bonus", {"userId": user_id})
 

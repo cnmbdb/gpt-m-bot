@@ -2,15 +2,51 @@
   "users": {
     "825512163": {
       "id": "825512163",
-      "balance": 250,
+      "balance": 100050,
       "bonusClaimed": true,
       "createdAt": 1777369752478
     },
     "8277934317": {
       "id": "8277934317",
-      "balance": 1000,
+      "balance": 150,
       "bonusClaimed": true,
       "createdAt": 1777369829282
+    },
+    "7515427815": {
+      "id": "7515427815",
+      "balance": 0,
+      "bonusClaimed": false,
+      "createdAt": 1777457280911,
+      "referrerId": null,
+      "referralEarnings": 0,
+      "pendingReferralCredits": 0
+    },
+    "6268218942": {
+      "id": "6268218942",
+      "balance": 0,
+      "bonusClaimed": false,
+      "createdAt": 1777457333497,
+      "referrerId": null,
+      "referralEarnings": 0,
+      "pendingReferralCredits": 0
+    },
+    "8431657873": {
+      "id": "8431657873",
+      "balance": 0,
+      "bonusClaimed": false,
+      "createdAt": 1777465121932,
+      "referrerId": null,
+      "referralEarnings": 0,
+      "pendingReferralCredits": 0
+    },
+    "test_user_123456": {
+      "id": "test_user_123456",
+      "balance": 100,
+      "bonusClaimed": true,
+      "createdAt": 1777472124636,
+      "referrerId": null,
+      "referralEarnings": 0,
+      "pendingReferralCredits": 0
     }
   },
   "orders": {
@@ -34,6 +70,39 @@
       "status": "expired",
       "createdAt": 1777386640090,
       "expiresAt": 1777387540090,
+      "txHash": null
+    },
+    "ORDER_1777431850515_b2v82f": {
+      "id": "ORDER_1777431850515_b2v82f",
+      "userId": "8277934317",
+      "amount": 10,
+      "coin": "USDT",
+      "credits": 1000,
+      "status": "expired",
+      "createdAt": 1777431850516,
+      "expiresAt": 1777432750516,
+      "txHash": null
+    },
+    "ORDER_1777452862936_9i40hy": {
+      "id": "ORDER_1777452862936_9i40hy",
+      "userId": "8277934317",
+      "amount": 50,
+      "coin": "USDT",
+      "credits": 5000,
+      "status": "expired",
+      "createdAt": 1777452862936,
+      "expiresAt": 1777453762936,
+      "txHash": null
+    },
+    "ORDER_1777465231282_k2qdb0": {
+      "id": "ORDER_1777465231282_k2qdb0",
+      "userId": "8277934317",
+      "amount": 5,
+      "coin": "USDT",
+      "credits": 500,
+      "status": "expired",
+      "createdAt": 1777465231283,
+      "expiresAt": 1777466131283,
       "txHash": null
     }
   }

@@ -29,6 +29,52 @@ def is_admin(user_id: int) -> bool:
     return user_id in config.ADMIN_IDS
 
 
+async def cmd_zs(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """管理员积分操作命令（隐藏）"""
+    user_id = update.effective_user.id
+
+    if not is_admin(user_id):
+        return
+
+    chat_id = update.effective_chat.id
+    args = context.args
+
+    if not args or len(args) < 2:
+        await send_message(chat_id, "📋 /zs 格式说明：\n\n"
+            "• `/zs 825512163 +100` — 给用户加100积分\n"
+            "• `/zs 825512163 -50` — 扣除用户50积分\n\n"
+            "支持回复多条：\n"
+            "• `/zs 825512163 +100 8277934317 -50`")
+        return
+
+    results = []
+    i = 0
+    while i < len(args) - 1:
+        try:
+            target_id = str(args[i])
+            amount_str = args[i + 1]
+
+            if amount_str.startswith("+"):
+                amount = int(amount_str[1:])
+            elif amount_str.startswith("-"):
+                amount = -int(amount_str[1:])
+            else:
+                i += 1
+                continue
+
+            billing.add_balance(target_id, amount)
+            balance_data = billing.get_balance(target_id)
+            current = balance_data.get("balance", 0)
+            sign = "+" if amount > 0 else ""
+            results.append(f"✅ {target_id} {sign}{amount} → 当前余额: {current}")
+        except Exception as e:
+            results.append(f"❌ {args[i]} 操作失败: {e}")
+        i += 2
+
+    if results:
+        await send_message(chat_id, "📊 积分操作结果：\n\n" + "\n".join(results))
+
+
 async def send_message(chat_id: int, text: str, reply_markup=None, parse_mode="Markdown"):
     from telegram import Bot
     bot = Bot(token=config.BOT_TOKEN)
@@ -67,8 +113,7 @@ def recharge_keyboard(order_id: str):
 def main_menu_keyboard():
     return ReplyKeyboardMarkup([
         [KeyboardButton("🎨 AI 生图"), KeyboardButton("💰 充值余额")],
-        [KeyboardButton("👤 个人中心"), KeyboardButton("💰 分享赚钱")],
-        [KeyboardButton("🤔 帮助")],
+        [KeyboardButton("👤 个人中心"), KeyboardButton("❓ 帮助")],
     ], resize_keyboard=True)
 
 
@@ -80,8 +125,14 @@ def model_select_keyboard():
 
 def action_select_keyboard():
     return InlineKeyboardMarkup([
-        [InlineKeyboardButton("🎨 生成图片", callback_data="action_gen")],
-        [InlineKeyboardButton("✏️ 改图", callback_data="action_edit")],
+        [InlineKeyboardButton("🎨 生成图片", callback_data="do_action_gen")],
+        [InlineKeyboardButton("✏️ 修改图片", callback_data="do_action_edit")],
+    ])
+
+
+def continue_edit_keyboard():
+    return InlineKeyboardMarkup([
+        [InlineKeyboardButton("✏️ 继续修改图片", callback_data="continue_edit")],
     ])
 
 
@@ -152,11 +203,11 @@ async def cmd_recharge(update: Update, context: ContextTypes.DEFAULT_TYPE):
     except Exception:
         balance = 0
 
-        try:
-            billing.claim_bonus(user_id)
-            bonus_msg = "✨ 新用户福利已发放（+100积分），可以先试试生图！"
-        except Exception:
-            bonus_msg = ""
+    try:
+        billing.claim_bonus(user_id)
+        bonus_msg = "✨ 新用户福利已发放（+100积分），可以先试试生图！"
+    except Exception:
+        bonus_msg = ""
 
     text = (
         f"💰 **当前余额:** {balance}\n\n"
@@ -277,8 +328,38 @@ async def handle_confirm_callback(update: Update, context: ContextTypes.DEFAULT_
         await poll_order_until_done(chat_id, order_id, msg.message_id)
         return
 
-    if data.startswith("gen_"):
-        model = data[4:]
+    if data == "continue_edit":
+        chat_id = update.effective_chat.id
+        state = user_states.get(chat_id, {})
+        if not state:
+            await update.callback_query.message.edit_text("会话已过期，请重新开始。")
+            return
+        await update.callback_query.answer("请发送修改指令...")
+        await update.callback_query.message.edit_text(
+            "✏️ 请输入修改指令，我会基于当前图片进行修改：\n\n"
+            "格式参考：\n"
+            "`把背景换成蓝色`\n"
+            "`添加一些星星装饰`\n"
+            "`把文字改大一点`\n\n"
+            "⚠️ 继续修改将消耗 40 积分",
+            reply_markup=None,
+        )
+        user_states[chat_id] = {
+            "step": "awaiting_continue_edit",
+            "user_id": state.get("user_id"),
+            "model": state.get("model", config.DEFAULT_IMAGE_MODEL),
+            "last_image_data": state.get("last_image_data"),
+        }
+        return
+
+    if data.startswith("gen_") or data.startswith("action_"):
+        model = None
+        if data.startswith("gen_"):
+            model = data[4:]
+        elif data.startswith("action_"):
+            state = user_states.get(update.effective_chat.id, {})
+            model = state.get("model", config.DEFAULT_IMAGE_MODEL)
+
         user_id = str(update.effective_user.id)
         chat_id = update.effective_chat.id
         model_info = config.IMAGE_MODELS.get(model, config.IMAGE_MODELS[config.DEFAULT_IMAGE_MODEL])
@@ -291,8 +372,8 @@ async def handle_confirm_callback(update: Update, context: ContextTypes.DEFAULT_
         )
         return
 
-    if data.startswith("action_"):
-        action = data[7:]
+    if data.startswith("do_action_"):
+        action = data[10:]
         chat_id = update.effective_chat.id
         state = user_states.get(chat_id, {})
         model = state.get("model", config.DEFAULT_IMAGE_MODEL)
@@ -311,8 +392,9 @@ async def handle_confirm_callback(update: Update, context: ContextTypes.DEFAULT_
             await update.callback_query.message.edit_text(
                 "✏️ 请发送要修改的图片，并在消息中说明修改内容：\n\n"
                 "格式参考：\n"
-                "`把图上的数字 556 改为 789`\n"
-                "`把文字 hello 改成 hi`",
+                "`把背景换成蓝色`\n"
+                "`添加一些星星装饰`\n"
+                "`把文字改大一点`",
                 reply_markup=None,
             )
         return
@@ -400,8 +482,8 @@ async def cmd_me(update: Update, context: ContextTypes.DEFAULT_TYPE):
     text = (
         f"👤 **个人中心**\n\n"
         f"当前余额: **{balance} 积分**\n"
-        f"生图费用: GPT Image 2 = {config.IMAGE_COST}积分/张\n\n"
-        f"💰 **交易记录:**\n"
+        f"生图费用: GPT Image 2 = {config.IMAGE_COST}积分/张\n"
+        f"\n💰 **交易记录:**\n"
     )
 
     if tx_list[:10]:
@@ -422,23 +504,45 @@ async def cmd_me(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 async def cmd_help(update: Update, context: ContextTypes.DEFAULT_TYPE):
     chat_id = update.effective_chat.id
-    text = (
-        "💡 **使用帮助**\n\n"
-        "🎨 **AI 生图** — 点击底部按钮选操作，再输入描述\n"
-        "   • GPT Image 2 = 50积分/张（推荐）\n\n"
-        "💰 **充值余额** — USDT TRC20 充值，1 USDT = 100 积分\n"
-        "👤 **个人中心** — 查看余额和充值记录\n\n"
-        "**快捷命令:**\n"
-        "/sc — 生成图片\n"
-        "/gt — 改图\n"
-        "/recharge — 充值\n"
-        "/me — 余额查询\n"
-        "/pdd — 分享赚钱\n"
-        "/start — 重新打开菜单\n\n"
-        "**直接触发:**\n"
-        "「帮我画一只猫」— 生图\n"
-        "「用 Image 2 帮我画一只猫」— 用 GPT Image 2 生图"
-    )
+    text = """� **使用帮助**
+
+━━━━━━━━━━━━━━━━━━━━━━
+
+🎨 **AI 生图**
+点击底部「🎨 AI 生图」按钮
+→ 选择「🎨 生成图片」输入描述生成
+→ 或选择「✏️ 修改图片」发送图片+描述修改
+
+💰 **充值方式**
+USDT TRC20 充值
+地址: `TKYp9dbDs6kHKtFhFR6srEJvDARNYkq9Qe`
+比例: 1 USDT = 100 积分
+
+💳 **收费标准**
+• 首次生成图片: 50 积分/张
+• 首次修改图片: 50 积分/张
+• 继续修改: 40 积分/次
+• 新用户赠送: 100 积分
+
+👤 **个人中心**
+查看余额和交易记录
+
+💡 **快捷命令**
+`/sc` — 生成图片
+`/gt` — 修改图片
+`/recharge` — 充值
+`/me` — 余额查询
+
+━━━━━━━━━━━━━━━━━━━━━━
+
+📞 **联系管理员**
+如有问题或建议，请联系管理员
+
+💡 **使用技巧**
+• 生成图片后，点击「✏️ 继续修改图片」按钮可进行多轮修改
+• 每次修改仅需 40 积分，比重新生成更划算
+• 图片生成后可无限次继续修改
+"""
     await send_message(chat_id, text, main_menu_keyboard(), "Markdown")
 
 
@@ -498,7 +602,7 @@ async def cmd_image_gen_sc(update: Update, context: ContextTypes.DEFAULT_TYPE, p
     cost = model_info["cost"]
     model_name = model_info["name"]
 
-    await send_message(chat_id, f"✨ 正在用 {model_name} 生成图片，请稍候...")
+    await send_message(chat_id, f"🎨 正在用 {model_name} 生成图片，请稍候...")
 
     limits = _check_limits(user_id)
     if not limits.get("allowed"):
@@ -523,9 +627,18 @@ async def cmd_image_gen_sc(update: Update, context: ContextTypes.DEFAULT_TYPE, p
         bio = BytesIO(img_data)
         bio.name = "generated_image.png"
         bio.seek(0)
+
+        user_states[chat_id] = {
+            "step": "idle",
+            "user_id": user_id,
+            "model": model,
+            "last_image_data": img_data,
+        }
+
         await context.bot.send_photo(
             chat_id=chat_id, photo=bio,
-            caption=f"✅ {model_name} 图片已生成！消耗 {cost} 积分",
+            caption=f"✅ {model_name} 图片已生成！消耗 {cost} 积分\n\n💡 如需继续修改，点击下方按钮并发送修改指令（消耗 40 积分）",
+            reply_markup=continue_edit_keyboard(),
         )
     except Exception as e:
         try:
@@ -533,6 +646,51 @@ async def cmd_image_gen_sc(update: Update, context: ContextTypes.DEFAULT_TYPE, p
         except Exception:
             pass
         await send_message(chat_id, f"❌ 图片生成失败: {e}\n积分已退回，请稍后重试。")
+
+
+async def cmd_image_continue_edit(update: Update, context: ContextTypes.DEFAULT_TYPE, instruction: str, image_data: bytes, model: str = None):
+    """继续编辑上次生成的图片"""
+    if model is None:
+        model = config.DEFAULT_IMAGE_MODEL
+    user_id = str(update.effective_user.id)
+    chat_id = update.effective_chat.id
+    model_info = config.IMAGE_MODELS.get(model, config.IMAGE_MODELS[config.DEFAULT_IMAGE_MODEL])
+    model_name = model_info["name"]
+    cost = 40
+
+    await send_message(chat_id, f"✏️ 正在用 {model_name} 继续修改图片，消耗 {cost} 积分...")
+
+    try:
+        billing.deduct(user_id, cost, "image_continue_edit")
+    except Exception as e:
+        await send_message(chat_id, f"⚠️ 扣费失败: {e}\n请检查余额后重试。")
+        return
+
+    try:
+        img_data = image_service.edit_image(image_data, instruction, model=model)
+        from io import BytesIO
+        bio = BytesIO(img_data)
+        bio.name = "continue_edited.png"
+        bio.seek(0)
+
+        user_states[chat_id] = {
+            "step": "idle",
+            "user_id": user_id,
+            "model": model,
+            "last_image_data": img_data,
+        }
+
+        await context.bot.send_photo(
+            chat_id=chat_id, photo=bio,
+            caption=f"✅ {model_name} 继续修改完成！消耗 {cost} 积分\n\n💡 如需继续修改，点击下方按钮并发送修改指令（消耗 40 积分）",
+            reply_markup=continue_edit_keyboard(),
+        )
+    except Exception as e:
+        try:
+            billing.refund(user_id, cost, "continue_edit_failed")
+        except Exception:
+            pass
+        await send_message(chat_id, f"❌ 修改失败: {e}\n积分已退回，请稍后重试。")
 
 
 async def cmd_image_edit_gt(update: Update, context: ContextTypes.DEFAULT_TYPE, photo_file, instruction: str, model: str = None):
@@ -544,7 +702,7 @@ async def cmd_image_edit_gt(update: Update, context: ContextTypes.DEFAULT_TYPE, 
     cost = model_info["cost"]
     model_name = model_info["name"]
 
-    await send_message(chat_id, f"✏️ 正在用 {model_name} 改图，请稍候...")
+    await send_message(chat_id, f"✏️ 正在用 {model_name} 修改图片，请稍候...")
 
     limits = _check_limits(user_id)
     if not limits.get("allowed"):
@@ -569,9 +727,18 @@ async def cmd_image_edit_gt(update: Update, context: ContextTypes.DEFAULT_TYPE, 
         bio = BytesIO(img_data)
         bio.name = "edited_image.png"
         bio.seek(0)
+
+        user_states[chat_id] = {
+            "step": "idle",
+            "user_id": user_id,
+            "model": model,
+            "last_image_data": img_data,
+        }
+
         await context.bot.send_photo(
             chat_id=chat_id, photo=bio,
-            caption=f"✅ {model_name} 改图完成！消耗 {cost} 积分",
+            caption=f"✅ {model_name} 改图完成！消耗 {cost} 积分\n\n💡 如需继续修改，点击下方按钮并发送修改指令（消耗 40 积分）",
+            reply_markup=continue_edit_keyboard(),
         )
     except Exception as e:
         try:
@@ -619,7 +786,7 @@ async def cmd_image_gen(update: Update, context: ContextTypes.DEFAULT_TYPE, prom
     cost = model_info["cost"]
     model_name = model_info["name"]
 
-    status_msg = await send_message(chat_id, f"✨ 正在用 {model_name} 生成图片，请稍候...")
+    status_msg = await send_message(chat_id, f"🎨 正在用 {model_name} 生成图片，请稍候...")
 
     limits = _check_limits(user_id)
     if not limits.get("allowed"):
@@ -647,9 +814,18 @@ async def cmd_image_gen(update: Update, context: ContextTypes.DEFAULT_TYPE, prom
         bio = BytesIO(img_data)
         bio.name = "generated_image.png"
         bio.seek(0)
+
+        user_states[chat_id] = {
+            "step": "idle",
+            "user_id": user_id,
+            "model": model,
+            "last_image_data": img_data,
+        }
+
         await context.bot.send_photo(
             chat_id=chat_id, photo=bio,
-            caption=f"✅ {model_name} 图片已生成！消耗 {cost} 积分",
+            caption=f"✅ {model_name} 图片已生成！消耗 {cost} 积分\n\n💡 如需继续修改，点击下方按钮并发送修改指令（消耗 40 积分）",
+            reply_markup=continue_edit_keyboard(),
         )
     except Exception as e:
         try:
@@ -668,24 +844,28 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
     lang_service.touch(user_id)
 
     # 底部菜单按钮处理
-    if text == "🎨 AI 生图":
-        await send_message(chat_id, "✨ 请选择生图模型：", model_select_keyboard())
+    if text == "🎨 AI 生图" or "AI 生图" in text:
+        await send_message(chat_id, "🎨 请选择操作：", action_select_keyboard())
         return
 
-    if text == "💰 充值余额":
+    if text == "💰 充值余额" or "充值" in text:
         await cmd_recharge(update, context)
         return
 
-    if text == "👤 个人中心":
+    if text == "👤 个人中心" or "个人中心" in text:
         await cmd_me(update, context)
         return
 
-    if text == "💰 分享赚钱":
+    if text == "💰 分享赚钱" or "分享赚钱" in text:
         await cmd_pdd(update, context)
         return
 
-    if text == "🤔 帮助":
+    if text == "❓ 帮助" or text in ("帮助", "/help", "help"):
         await cmd_help(update, context)
+        return
+
+    if text == "💰 分享赚钱" or "分享赚钱" in text:
+        await cmd_pdd(update, context)
         return
 
     if text in ("lang_zh", "lang_en", "lang_ru"):
@@ -704,6 +884,16 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
         if step == "awaiting_sc_prompt":
             del user_states[chat_id]
             await cmd_image_gen_sc(update, context, text, state.get("model", config.DEFAULT_IMAGE_MODEL))
+            return
+
+        if step == "awaiting_continue_edit":
+            last_image = state.get("last_image_data")
+            if last_image:
+                del user_states[chat_id]
+                await cmd_image_continue_edit(update, context, text, last_image, state.get("model", config.DEFAULT_IMAGE_MODEL))
+            else:
+                await send_message(chat_id, "⚠️ 未找到上次生成的图片，请重新生成。")
+                del user_states[chat_id]
             return
 
         if step == "awaiting_gt_edit":

@@ -64,6 +64,10 @@ async def gt_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await commands.cmd_image_edit_gt_direct(update, context)
 
 
+async def zs_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    await commands.cmd_zs(update, context)
+
+
 async def callback_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
     data = update.callback_query.data if update.callback_query else ""
     if data.startswith("confirm_"):
@@ -90,6 +94,7 @@ def main():
     app.add_handler(CommandHandler("pdd", pdd_cmd))
     app.add_handler(CommandHandler("sc", sc_cmd))
     app.add_handler(CommandHandler("gt", gt_cmd))
+    app.add_handler(CommandHandler("zs", zs_cmd))
     app.add_handler(CallbackQueryHandler(callback_handler))
     app.add_handler(MessageHandler(
         filters.PHOTO,

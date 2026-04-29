@@ -187,6 +187,19 @@ app.post('/claim-bonus', (req, res) => {
   res.json({ success: true, bonus: CONFIG.newUserBonus, newBalance: user.balance });
 });
 
+app.post('/add-balance', (req, res) => {
+  const { userId, amount } = req.body;
+  if (!userId || !amount) return res.status(400).json({ error: 'userId and amount required' });
+
+  const data = loadData();
+  if (!data.users[userId]) return res.status(404).json({ error: 'User not found' });
+
+  data.users[userId].balance += amount;
+  saveData(data);
+
+  res.json({ success: true, userId, added: amount, newBalance: data.users[userId].balance });
+});
+
 app.post('/admin/add-balance', (req, res) => {
   const { userId, amount } = req.body;
   if (!userId || !amount) return res.status(400).json({ error: 'userId and amount required' });
