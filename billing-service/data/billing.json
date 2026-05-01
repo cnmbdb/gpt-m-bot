@@ -2,19 +2,19 @@
   "users": {
     "825512163": {
       "id": "825512163",
-      "balance": 100050,
+      "balance": 99910,
       "bonusClaimed": true,
       "createdAt": 1777369752478
     },
     "8277934317": {
       "id": "8277934317",
-      "balance": 150,
+      "balance": 900,
       "bonusClaimed": true,
       "createdAt": 1777369829282
     },
     "7515427815": {
       "id": "7515427815",
-      "balance": 0,
+      "balance": 370,
       "bonusClaimed": false,
       "createdAt": 1777457280911,
       "referrerId": null,
@@ -44,6 +44,15 @@
       "balance": 100,
       "bonusClaimed": true,
       "createdAt": 1777472124636,
+      "referrerId": null,
+      "referralEarnings": 0,
+      "pendingReferralCredits": 0
+    },
+    "5557109895": {
+      "id": "5557109895",
+      "balance": 10010,
+      "bonusClaimed": true,
+      "createdAt": 1777572396934,
       "referrerId": null,
       "referralEarnings": 0,
       "pendingReferralCredits": 0
@@ -104,6 +113,78 @@
       "createdAt": 1777465231283,
       "expiresAt": 1777466131283,
       "txHash": null
+    },
+    "ORDER_1777520891718_6zzvjm": {
+      "id": "ORDER_1777520891718_6zzvjm",
+      "userId": "8277934317",
+      "amount": 10,
+      "coin": "USDT",
+      "credits": 1000,
+      "status": "expired",
+      "createdAt": 1777520891719,
+      "expiresAt": 1777521791719,
+      "txHash": null
+    },
+    "ORDER_1777552239499_medx7m": {
+      "id": "ORDER_1777552239499_medx7m",
+      "userId": "825512163",
+      "baseAmount": 50,
+      "displayAmount": 50.19,
+      "coin": "USDT",
+      "credits": 5000,
+      "status": "expired",
+      "createdAt": 1777552239501,
+      "expiresAt": 1777553139501,
+      "txHash": null
+    },
+    "ORDER_1777555573986_qn9dul": {
+      "id": "ORDER_1777555573986_qn9dul",
+      "userId": "825512163",
+      "baseAmount": 3,
+      "displayAmount": 3.34,
+      "coin": "USDT",
+      "credits": 300,
+      "status": "expired",
+      "createdAt": 1777555573986,
+      "expiresAt": 1777556473986,
+      "txHash": null
+    },
+    "ORDER_1777555757771_2vkckz": {
+      "id": "ORDER_1777555757771_2vkckz",
+      "userId": "825512163",
+      "baseAmount": 2,
+      "displayAmount": 2.69,
+      "coin": "USDT",
+      "credits": 200,
+      "status": "expired",
+      "createdAt": 1777555757771,
+      "expiresAt": 1777556657771,
+      "txHash": null
+    },
+    "ORDER_1777559846874_gr3pqy": {
+      "id": "ORDER_1777559846874_gr3pqy",
+      "userId": "8277934317",
+      "baseAmount": 15,
+      "displayAmount": 15.08,
+      "coin": "USDT",
+      "credits": 1500,
+      "status": "expired",
+      "createdAt": 1777559846875,
+      "expiresAt": 1777560746875,
+      "txHash": null
+    },
+    "ORDER_1777615127942_9473pn": {
+      "id": "ORDER_1777615127942_9473pn",
+      "userId": "8277934317",
+      "baseAmount": 1,
+      "displayAmount": 1.41,
+      "coin": "USDT",
+      "credits": 100,
+      "status": "completed",
+      "createdAt": 1777615127943,
+      "expiresAt": 1777616027943,
+      "txHash": "ccbeb1831e9ed961e2a876f65a8b80cc9f6e93b3c7e4d9f8a1b2c3d4e5f6a7b8c",
+      "completedAt": 1777615447437
     }
   }
 }

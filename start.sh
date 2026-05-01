@@ -92,12 +92,73 @@ echo "   ✅ Telegram 机器人已启动 (PID: $BOT_PID)"
 echo "------------------------------------------"
 
 echo ""
-echo "🎉 所有服务已启动！"
+echo "🔍 启动健康检查..."
+echo ""
+
+# 健康检查函数
+check_service() {
+    local name=$1
+    local check_func=$2
+    if $check_func; then
+        echo "   ✅ $name"
+        return 0
+    else
+        echo "   ❌ $name"
+        return 1
+    fi
+}
+
+# Telegram Bot
+check_bot() {
+    BOT_RUNNING=$(ps aux | grep "python.*bot.py" | grep -v grep | awk '{print $2}' | head -1)
+    [ -n "$BOT_RUNNING" ]
+}
+
+# Billing Service
+check_billing() {
+    curl -s -o /dev/null -w "%{http_code}" http://127.0.0.1:4313/health 2>/dev/null | grep -q "200"
+}
+
+# Docker GPT API
+check_docker() {
+    docker ps --filter "name=chatgpt2api" --format "{{.Names}}" 2>/dev/null | grep -q "chatgpt2api"
+}
+
+# TRON API
+check_tron() {
+    curl -s -o /dev/null -w "%{http_code}" "https://api.trongrid.io/v1/accounts/TKYp9dbDs6kHKtFhFR6srEJvDARNYkq9Qe" 2>/dev/null | grep -q "200"
+}
+
+all_ok=true
+
+echo "📡 Telegram Bot:"
+check_service "Telegram Bot" check_bot || all_ok=false
+
+echo "💰 Billing Service:"
+check_service "Billing Service (4313)" check_billing || all_ok=false
+
+echo "🖼️ GPT API Proxy (Docker):"
+if check_service "GPT API Docker" check_docker; then
+    GPT_STATUS=$(docker ps --filter "name=chatgpt2api" --format "{{.Status}}" 2>/dev/null)
+    echo "      状态: $GPT_STATUS"
+fi
+
+echo "🔗 TRON API:"
+check_service "Trongrid API" check_tron || all_ok=false
+
+echo ""
+
+if [ "$all_ok" = true ]; then
+    echo "🎉 所有服务已启动并正常！"
+else
+    echo "⚠️ 部分服务异常，请检查"
+fi
 echo ""
 echo "   计费服务: http://127.0.0.1:4313"
 echo "   Telegram: 运行中"
 echo ""
 echo "   停止服务: ./stop.sh"
+echo "   健康检查: ./health-check.sh"
 echo ""
 
 echo "$BILLING_PID $BOT_PID" > "$SCRIPT_DIR/.pids"

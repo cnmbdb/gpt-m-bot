@@ -46,6 +46,15 @@ class ImageService:
         else:
             return self._generate_openai(prompt, model, size)
 
+    def generate_with_image(self, prompt: str, ref_image: bytes, model: str = "gpt-m2") -> bytes:
+        model_info = self._get_model_info(model)
+        provider = model_info.get("provider", "openai")
+
+        if provider == "local":
+            return self._generate_local_with_image(prompt, ref_image, model_info)
+        else:
+            return self._generate_openai_with_image(prompt, ref_image, model)
+
     def _get_model_info(self, model: str) -> dict:
         try:
             import sys, os
@@ -121,6 +130,93 @@ class ImageService:
                 "Content-Type": "application/json",
             },
             json=payload,
+            timeout=120,
+        )
+
+        if response.status_code != 200:
+            raise RuntimeError(f"API error {response.status_code}: {response.text[:200]}")
+
+        data = response.json()
+        if "error" in data:
+            raise RuntimeError(data["error"].get("message", str(data["error"])))
+
+        b64 = data["data"][0].get("b64_json")
+        if b64:
+            return base64.b64decode(b64)
+
+        url = data["data"][0].get("url")
+        if url:
+            img_resp = requests.get(url, timeout=60)
+            img_resp.raise_for_status()
+            return img_resp.content
+
+        raise RuntimeError("No image data (b64_json or url) in response")
+
+    def _generate_local_with_image(self, prompt: str, ref_image: bytes, model_info: dict) -> bytes:
+        import sys, os
+        sys.path.insert(0, os.path.join(os.path.dirname(__file__), "../.."))
+        import config
+
+        base_url = config.GPT_API_BASE_URL
+        auth_key = config.GPT_API_AUTH_KEY
+        local_model = model_info.get("local_model", "gpt-image-2")
+
+        response = requests.post(
+            f"{base_url}/v1/images/edits",
+            headers={
+                "Authorization": f"Bearer {auth_key}",
+            },
+            data={
+                "model": local_model,
+                "prompt": prompt,
+                "n": 1,
+                "response_format": "b64_json",
+            },
+            files={"image": ("reference.png", ref_image, "image/png")},
+            timeout=120,
+        )
+
+        if response.status_code != 200:
+            raise RuntimeError(f"Local API error {response.status_code}: {response.text[:200]}")
+
+        data = response.json()
+        if "error" in data:
+            raise RuntimeError(data["error"].get("message", str(data["error"])))
+
+        b64 = data["data"][0].get("b64_json")
+        if b64:
+            return base64.b64decode(b64)
+
+        url = data["data"][0].get("url")
+        if url:
+            img_resp = requests.get(url, timeout=60)
+            img_resp.raise_for_status()
+            return img_resp.content
+
+        raise RuntimeError("No image data (b64_json or url) in response")
+
+    def _generate_openai_with_image(self, prompt: str, ref_image: bytes, model: str) -> bytes:
+        import sys, os
+        sys.path.insert(0, os.path.join(os.path.dirname(__file__), "../.."))
+        import config
+
+        if not config.OPENAI_API_KEY:
+            raise RuntimeError("OPENAI_API_KEY not configured")
+
+        supported = ("gpt-image-1", "gpt-image-1.5", "gpt-image-1-mini", "chatgpt-image-latest")
+        actual = model if model in supported else "gpt-image-1"
+
+        response = requests.post(
+            "https://api.openai.com/v1/images/generations",
+            headers={
+                "Authorization": f"Bearer {config.OPENAI_API_KEY}",
+            },
+            data={
+                "model": actual,
+                "prompt": prompt,
+                "n": 1,
+            },
+            files={"image": ("reference.png", ref_image, "image/png")},
             timeout=120,
         )
 

@@ -1,6 +1,6 @@
 # Telegram AI 生图机器人
 
-基于 Python + Node.js 的 Telegram 机器人，支持 USDT/TRC20 充值、积分计费、GPT Image 1 图片生成、多语言界面、以及邀请返现。
+基于 Python + Node.js 的 Telegram 机器人，支持 USDT/TRC20 充值（自动链上检测）、积分计费、GPT Image 2 图片生成、多语言界面、邀请返现、以及多轮图片编辑功能。
 
 ---
 
@@ -10,28 +10,29 @@
 gpt-huatu/
 ├── billing-service/              # 计费服务 (Node.js Express)
 │   ├── server.js                # API 服务主文件
-│   ├── check-limits.js           # 限额检查脚本
-│   ├── gen-openclaw-style.js     # 图片生成脚本
+│   ├── check-limits.js         # 限额检查脚本
 │   ├── package.json
 │   └── data/
 │       ├── billing.json          # 用户/订单数据
 │       ├── pending_transfers.json
-│       └── transactions.json     # 交易流水
+│       └── transactions.json
 ├── telegram-bot/                 # Telegram 机器人 (Python)
 │   ├── bot.py                   # 主入口
-│   ├── config.py               # 配置（欢迎语、语言文案等）
+│   ├── config.py                # 配置
 │   ├── handlers/
 │   │   └── commands.py         # 命令处理器
 │   ├── services/
-│   │   ├── billing.py         # 计费服务客户端
-│   │   ├── language.py        # 语言偏好 + 活跃时间管理
-│   │   └── image.py           # 图片生成服务
-│   ├── requirements.txt
+│   │   ├── billing.py          # 计费服务客户端
+│   │   ├── language.py         # 语言偏好管理
+│   │   └── image.py            # 图片生成服务
 │   └── data/
-│       └── language-preferences.json  # 用户语言设置
-├── .env                         # 环境变量（需自行创建）
-├── start.sh                    # 一键启动脚本
-├── stop.sh                     # 停止脚本
+├── gpt-api/                     # 本地 gpt-image-2 反代服务 (chatgpt2api Docker)
+│   ├── docker-compose.yml
+│   └── .env
+├── .env                         # 环境变量
+├── start.sh                     # 一键启动脚本（含健康检查）
+├── stop.sh                      # 停止脚本
+├── health-check.sh              # 健康检查脚本
 └── README.md
 ```
 
@@ -41,20 +42,22 @@ gpt-huatu/
 
 - Node.js >= 16
 - Python >= 3.10
+- Docker (用于 gpt-api 本地反代服务)
+- USDT (TRC20) 用于充值
 
 ---
 
 ## 快速启动
 
 ```bash
-# 复制并配置环境变量
-cp .env.example .env  # 手动编辑 .env 填入 TOKEN 和 API Key
-
-# 一键启动（计费服务 + Telegram 机器人）
+# 一键启动（所有服务 + 健康检查）
 ./start.sh
 
 # 停止
 ./stop.sh
+
+# 健康检查
+./health-check.sh
 ```
 
 ---
@@ -62,44 +65,103 @@ cp .env.example .env  # 手动编辑 .env 填入 TOKEN 和 API Key
 ## 环境变量 (.env)
 
 ```bash
-# Telegram Bot Token（从 @BotFather 获取）
-TELEGRAM_BOT_TOKEN="your_bot_token_here"
+TELEGRAM_BOT_TOKEN=your_bot_token_here
+OPENAI_API_KEY=your_openai_api_key_here
+BILLING_URL=http://127.0.0.1:4313
+GPT_API_BASE_URL=http://127.0.0.1:3000
+GPT_API_AUTH_KEY=chatgpt2api
+```
 
-# OpenAI API Key（用于 GPT Image 1）
-OPENAI_API_KEY="your_openai_api_key_here"
+---
 
-# 计费服务地址（默认本地）
-BILLING_URL="http://127.0.0.1:4313"
+## 架构说明
+
+```
+用户请求 (Telegram)
+       ↓
+Telegram 机器人 (Python)
+       ↓
+  ┌────┴────┐
+  ↓         ↓
+计费服务    GPT API 本地反代
+(Node.js)   (chatgpt2api Docker)
+端口:4313   端口:3000
+  ↓
+TRC20 链上交易自动检测
+```
+
+- **telegram-bot**: 处理用户交互、扣费、协调
+- **billing-service**: 用户余额、订单、交易记录、TRON 自动轮询检测
+- **gpt-api**: 本地运行 chatgpt2api，通过 ChatGPT 账号调用 gpt-image-2
+
+---
+
+## 启动服务（共 3 个）
+
+| 服务 | 技术栈 | 端口 | 启动命令 |
+|------|--------|------|----------|
+| Telegram Bot | Python | - | `python3 bot.py` |
+| Billing Service | Node.js | 4313 | `node server.js` |
+| GPT API Proxy | Docker | 3000 | `docker start chatgpt2api` |
+
+---
+
+## 健康检查
+
+启动后自动检查所有服务状态：
+
+```bash
+./start.sh
+# 输出示例：
+# 🔍 启动健康检查...
+# 📡 Telegram Bot:        ✅
+# 💰 Billing Service:     ✅
+# 🖼️ GPT API Docker:      ✅
+# 🔗 TRON API:            ✅
+# 🎉 所有服务已启动并正常！
+```
+
+或单独检查：
+
+```bash
+./health-check.sh
 ```
 
 ---
 
 ## 功能一览
 
-### 1. 多语言支持
-- 支持简体中文（🇨🇳）、English（🇺🇸）、Русский（🇷🇺）
-- 新用户首次使用或超过 7 天未活跃，再次触发时弹出语言选择
-- 界面文案全部支持三种语言
+### 1. AI 生图（GPT Image 2）
 
-### 2. AI 生图
-- 发送 `用 Image 2 帮我画一个图 [描述]`，或点击底部按钮输入描述
-- 使用 OpenAI GPT Image 1 模型生成高质量图片
-- 每张图片消耗 **50 积分**
+点击底部「🎨 AI 生图」按钮：
+- **生成图片**：输入描述 → 生成图片（消耗 50 积分）
+- **参考图片生成**：发送参考图片+文案描述 → 基于参考图生成图片（消耗 50 积分）
+- **修改图片**：发送图片+描述 → 修改图片（消耗 50 积分）
+- **继续修改**：生成/修改完成后，点击「✏️ 继续修改图片」按钮，输入修改指令（消耗 40 积分/次）
+- 图片生成后可无限次继续修改，每次仅需 40 积分
 
-### 3. USDT 充值
-- 充值地址：TRC20（波场链）
+### 2. USDT 充值（自动链上检测）
+
+- 地址：TRC20（波场链）`TKYp9dbDs6kHKtFhFR6srEJvDARNYkq9Qe`
 - 比例：1 USDT = 100 积分
-- 创建订单后 15 分钟内完成转账，点击确认按钮等待链上确认
-- 到账自动积分入账
+- 订单有效期：15 分钟
+- **防错充机制**：每个订单金额自动添加随机小数（0.01~0.99 USDT），转账时需精确到小数点后2位
+- **自动到账**：系统每 15 秒轮询 Trongrid API，检测到转账后自动发放积分，无需手动确认
+- **通知机制**：充值成功后同时通知用户和管理员
+
+### 3. 新用户福利
+
+- 首次充值后自动领取 100 积分
 
 ### 4. 邀请返现（/pdd）
-- 发送 `/pdd` 查看专属推荐链接
-- 好友通过你的推荐链接注册（`/start?start=pdd_{你的user_id}`）
-- 好友充值满 **10 USDT** 后，你立即获得 **300 积分** 返现
-- 推荐统计实时更新
 
-### 5. 新用户福利
-- 首次充值后自动领取 100 积分新用户奖励
+- 发送 `/pdd` 查看推荐链接
+- 好友通过推荐链接注册并充值满 10 USDT，你获得 300 积分返现
+
+### 5. 多语言支持
+
+- 支持简体中文（🇨🇳）、English（🇺🇸）、Русский（🇷🇺）
+- 新用户或超过 7 天未活跃时触发语言选择
 
 ---
 
@@ -107,25 +169,25 @@ BILLING_URL="http://127.0.0.1:4313"
 
 | 命令 | 描述 |
 |------|------|
-| `/start` | 开始使用 / 重新打开菜单（支持推荐链接 `/start?start=pdd_xxx`） |
-| `/recharge` | 充值余额（创建 USDT 充值订单） |
-| `/me` | 个人中心 — 查看余额和交易记录 |
-| `/pdd` | 分享赚钱 — 查看推荐链接和返现统计 |
-| `/help` | 使用帮助 |
+| `/start` | 开始使用 / 重新打开菜单 |
+| `/recharge` | 充值余额 |
+| `/me` | 个人中心 — 余额和交易记录 |
+| `/pdd` | 分享赚钱 — 推荐链接和返现统计 |
+| `/sc` | 生成图片 |
+| `/gt` | 修改图片 |
+| `/zs` | 管理员：增减用户积分（隐藏命令）|
 
 ---
 
 ## 底部菜单按钮
 
-机器人主界面底部有 Reply 键盘按钮：
-
 | 按钮 | 功能 |
 |------|------|
-| 🎨 AI 生图 | 输入图片描述，开始生成 |
+| 🎨 AI 生图 | 生成或修改图片 |
 | 💰 充值余额 | 创建充值订单 |
-| 👤 个人中心 | 查看余额和交易记录 |
-| 💰 分享赚钱 | 查看推荐链接和返现统计 |
-| ❓ 帮助 | 显示帮助信息 |
+| 💰 分享赚钱 | 推荐链接和返现 |
+| 👤 个人中心 | 余额和交易记录 |
+| ❓ 帮助 | 使用说明和收费标准 |
 
 ---
 
@@ -134,69 +196,64 @@ BILLING_URL="http://127.0.0.1:4313"
 | 项目 | 数值 |
 |------|------|
 | 1 USDT | 100 积分 |
-| 生图费用 | 50 积分/张 |
+| 首次生成图片 | 50 积分/张 |
+| 首次修改图片 | 50 积分/张 |
+| 继续修改 | 40 积分/次 |
 | 新用户奖励 | 100 积分 |
-| 推荐返现 | 被推荐人充值 ≥10 USDT 时，推荐人获得 300 积分 |
+| 推荐返现 | 被推荐人充值 ≥10 USDT 时，获得 300 积分 |
 | 充值有效期 | 订单创建后 15 分钟内有效 |
 
 ---
 
 ## 计费服务 API
 
-计费服务运行于 `http://127.0.0.1:4313`，以下为全部接口：
-
 | 端点 | 方法 | 描述 |
 |------|------|------|
 | `/health` | GET | 健康检查 |
 | `/user/:userId` | GET | 获取/注册用户 |
 | `/balance/:userId` | GET | 查询余额 |
-| `/deduct` | POST | 扣费（生图时调用） |
-| `/recharge` | POST | 创建充值订单 |
+| `/deduct` | POST | 扣费 |
+| `/recharge` | POST | 创建充值订单（自动添加随机小数） |
 | `/order/:orderId` | GET | 查询订单状态 |
-| `/orders/:userId` | GET | 用户订单列表 |
 | `/refund` | POST | 退款 |
 | `/claim-bonus` | POST | 领取新用户福利 |
-| `/notify-transfer` | POST | 链上确认回调（充值到账） |
 | `/bind-referrer` | POST | 绑定推荐人关系 |
-| `/referral/:userId` | GET | 查询推荐统计（推荐人数、已获返现、待返现） |
+| `/referral/:userId` | GET | 推荐统计 |
 | `/transactions/:userId` | GET | 交易流水 |
-| `/pending-orders` | GET | 待处理订单列表 |
+| `/add-balance` | POST | 增加用户余额 |
 | `/admin/add-balance` | POST | 管理员手动加余额 |
 | `/admin/users` | GET | 所有用户列表 |
+| `/pending-orders` | GET | 待处理订单列表 |
 
 ---
 
-## 推荐返现流程
+## 管理员命令 /zs
 
+仅管理员可用（不显示在命令菜单）：
+
+**方式一：回复消息后操作（推荐）**
 ```
-用户 A
-    │
-    │ 发送 /pdd
-    ▼
-获取推荐链接: https://t.me/<BotName>/start?start=pdd_用户A的ID
-    │
-    │ 分享给用户 B
-    ▼
-用户 B 点击链接 → 打开 Bot → 自动绑定 A 为推荐人
-    │
-    │ 用户 B 充值 ≥10 USDT
-    ▼
-系统自动给用户 A 发放 300 积分返现
+1. 管理员回复用户的消息
+2. 发送 /zs +100  → 给该用户加100积分
+3. 发送 /zs -50   → 扣除该用户50积分
 ```
 
-- 推荐关系绑定一次有效，不可重复绑定
-- 自己不能推荐自己
-- 推荐人必须已存在（至少调用过机器人一次）
+**方式二：直接指定用户ID**
+```bash
+/zs 825512163 +100    # 给用户加 100 积分
+/zs 825512163 -50     # 扣除用户 50 积分
+/zs 825512163 +100 8277934317 -50  # 一次操作多个用户
+```
 
 ---
 
 ## 管理员
 
-管理员不受所有限制（无限生图、新用户福利等）。
+管理员不受限制（无限生图、新用户福利等）。
 
 当前管理员：
-- `825512163` (@HFTGID)
-- `8277934317` (@psps)
+- `825512163`
+- `8277934317`
 
 在 `telegram-bot/config.py` 中配置 `ADMIN_IDS` 列表即可添加管理员。
 
@@ -204,13 +261,56 @@ BILLING_URL="http://127.0.0.1:4313"
 
 ## 数据存储
 
-所有数据存储在本地 JSON 文件中，无外部数据库依赖：
+所有数据存储在本地 JSON 文件中：
 
 | 文件 | 内容 |
 |------|------|
 | `billing-service/data/billing.json` | 用户信息、余额、推荐关系 |
 | `billing-service/data/pending_transfers.json` | 待确认充值订单 |
-| `billing-service/data/transactions.json` | 所有交易流水记录 |
-| `telegram-bot/data/language-preferences.json` | 用户语言设置和最后活跃时间 |
+| `billing-service/data/transactions.json` | 交易流水 |
+| `telegram-bot/data/language-preferences.json` | 用户语言设置 |
 
 > ⚠️ 数据仅存在本地，请定期备份重要数据文件。
+
+---
+
+## 图片生成流程
+
+```
+1. 点击「🎨 AI 生图」
+2. 选择操作：
+   ├─ 「🎨 生成图片」→ 输入描述 → 生成图片（50积分）
+   ├─ 「🎨 生成图片」→ 发送参考图片+描述 → 基于参考图生成（50积分）
+   └─ 「✏️ 修改图片」→ 发送图片+描述 → 修改图片（50积分）
+3. 图片生成后，点击「✏️ 继续修改图片」
+4. 输入修改指令 → 修改图片（40积分/次）
+5. 重复步骤 3-4 可无限次继续修改
+```
+
+---
+
+## 充值自动到账流程
+
+```
+用户创建订单（金额如 10.37 USDT）
+    ↓
+用户向 TRC20 地址转账精确金额
+    ↓
+billing-service 每 15 秒轮询 trongrid.io
+    ↓
+检测到匹配金额 → 自动完成充值
+    ↓
+通知用户 + 通知两个管理员
+```
+
+---
+
+## gpt-api 本地反代服务
+
+位于 `gpt-api/` 目录，运行 chatgpt2api Docker 容器：
+
+- 地址：`http://127.0.0.1:3000`
+- 鉴权 key：`chatgpt2api`
+- 模型：`gpt-image-2`
+
+需要导入有效的 ChatGPT Plus 账号才能使用。

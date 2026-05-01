@@ -76,6 +76,10 @@ async def callback_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await commands.handle_confirm_callback(update, context)
     elif data.startswith("action_"):
         await commands.handle_confirm_callback(update, context)
+    elif data.startswith("do_action_"):
+        await commands.handle_confirm_callback(update, context)
+    elif data.startswith("continue_edit"):
+        await commands.handle_confirm_callback(update, context)
     elif data.startswith("lang_"):
         await commands.handle_lang_callback(update, context)
 

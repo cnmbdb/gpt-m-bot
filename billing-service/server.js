@@ -1,4 +1,6 @@
 const express = require('express');
+const https = require('https');
+const http = require('http');
 const fs = require('fs');
 const path = require('path');
 
@@ -17,9 +19,13 @@ const CONFIG = {
   newUserBonus: 100,
   referralBonus: 300,
   referralMinRecharge: 10,
-  pollInterval: 5000,
+  pollInterval: 10000,
   orderTimeout: 15 * 60 * 1000,
-  admins: ['825512163', '8277934317']
+  admins: ['825512163', '8277934317'],
+  trongridApi: 'https://api.trongrid.io',
+  telegramBotToken: process.env.TELEGRAM_BOT_TOKEN || '',
+  tronPollInterval: 15000,
+  lastCheckedTxTimestamp: Date.now(),
 };
 
 function loadData() {
@@ -59,6 +65,32 @@ function addTx(userId, type, amount, reason, extra = {}) {
   });
   saveTx(tx);
   return tx[0];
+}
+
+function httpGet(url) {
+  return new Promise((resolve, reject) => {
+    const client = url.startsWith('https') ? https : http;
+    client.get(url, (res) => {
+      let data = '';
+      res.on('data', chunk => data += chunk);
+      res.on('end', () => {
+        try { resolve(JSON.parse(data)); }
+        catch { reject(new Error('Invalid JSON')); }
+      });
+    }).on('error', reject);
+  });
+}
+
+function notifyTelegram(chatId, message) {
+  if (!CONFIG.telegramBotToken || !chatId) return Promise.resolve();
+  return new Promise((resolve) => {
+    const url = `https://api.telegram.org/bot${CONFIG.telegramBotToken}/sendMessage?chat_id=${chatId}&text=${encodeURIComponent(message)}&parse_mode=Markdown`;
+    https.get(url, (res) => {
+      let data = '';
+      res.on('data', chunk => data += chunk);
+      res.on('end', resolve);
+    }).on('error', resolve);
+  });
 }
 
 function getOrCreateUser(userId) {
@@ -107,12 +139,15 @@ app.post('/recharge', (req, res) => {
     return res.status(400).json({ error: 'userId, amount, coin required' });
 
   const orderId = `ORDER_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
-  const credits = Math.floor(amount * CONFIG.rechargeRate);
+  const baseAmount = Math.floor(amount);
+  const randomCents = Math.floor(Math.random() * 99) + 1;
+  const displayAmount = baseAmount + (randomCents / 100);
+  const credits = Math.floor(baseAmount * CONFIG.rechargeRate);
   const data = loadData();
   const pending = loadPending();
 
   data.orders[orderId] = {
-    id: orderId, userId, amount, coin, credits,
+    id: orderId, userId, baseAmount, displayAmount, coin, credits,
     status: 'pending',
     createdAt: Date.now(),
     expiresAt: Date.now() + CONFIG.orderTimeout,
@@ -120,17 +155,18 @@ app.post('/recharge', (req, res) => {
   };
   saveData(data);
 
-  addTx(userId, 'recharge', credits, 'USDT deposit', { orderId, amount, coin });
+  addTx(userId, 'recharge', credits, 'USDT deposit', { orderId, displayAmount, coin });
 
   pending.push({
-    orderId, userId, amount, coin, credits,
+    orderId, userId, displayAmount, baseAmount, coin, credits,
+    status: 'pending',
     expiresAt: Date.now() + CONFIG.orderTimeout,
     notified: false
   });
   savePending(pending);
 
   res.json({
-    orderId, userId, amount, coin,
+    orderId, userId, amount: displayAmount, baseAmount, coin,
     address: CONFIG.trc20Address,
     credits,
     expiresAt: new Date(Date.now() + CONFIG.orderTimeout).toISOString(),
@@ -239,13 +275,13 @@ app.post('/notify-transfer', (req, res) => {
 
   // 推荐人返现：被推荐人充值 >= 10 USDT，推荐人得 300 积分
   let referralBonus = 0;
-  if (user.referrerId && order.amount >= CONFIG.referralMinRecharge) {
+  if (user.referrerId && order.baseAmount >= CONFIG.referralMinRecharge) {
     const referrer = data.users[user.referrerId];
     if (referrer) {
       referrer.balance += CONFIG.referralBonus;
       referrer.referralEarnings = (referrer.referralEarnings || 0) + CONFIG.referralBonus;
       referralBonus = CONFIG.referralBonus;
-      addTx(user.referrerId, 'referral_bonus', CONFIG.referralBonus, `推荐返现: ${order.userId} 充值 ${order.amount} USDT`);
+      addTx(user.referrerId, 'referral_bonus', CONFIG.referralBonus, `推荐返现: ${order.userId} 充值 ${order.baseAmount} USDT`);
     }
   }
 
@@ -324,8 +360,85 @@ function checkPendingOrders() {
   if (JSON.stringify(pending) !== JSON.stringify(remaining)) savePending(remaining);
 }
 
+async function checkTronTransfers() {
+  try {
+    const url = `${CONFIG.trongridApi}/v1/accounts/${CONFIG.trc20Address}/transactions/trc20?only_confirmed=true&limit=50`;
+    const result = await httpGet(url);
+
+    if (!result.data || !Array.isArray(result.data)) return;
+
+    const pending = loadPending();
+    const activePending = pending.filter(p => p.status === 'pending');
+    
+    if (activePending.length === 0) {
+      console.log('[TRON检查] 无待处理订单');
+      return;
+    }
+
+    checkPendingOrdersActive(activePending, result.data, loadData());
+  } catch (err) {
+    console.error('[TRON检查] 轮询失败:', err.message);
+  }
+}
+
+function checkPendingOrdersActive(pending, txList, data) {
+  let matchCount = 0;
+
+  for (const tx of txList) {
+    if (tx.to !== CONFIG.trc20Address) continue;
+
+    const txAmount = parseFloat(parseInt(tx.value, 10) || 0) / 1e6;
+
+    for (const order of pending) {
+      if (Math.abs(txAmount - order.displayAmount) < 0.001) {
+        const orderData = data.orders[order.orderId];
+        if (orderData && orderData.status === 'pending') {
+          orderData.status = 'completed';
+          orderData.txHash = tx.txID;
+          orderData.completedAt = Date.now();
+
+          const user = getOrCreateUser(order.userId);
+          user.balance += order.credits;
+
+          let referralBonus = 0;
+          if (user.referrerId && order.baseAmount >= CONFIG.referralMinRecharge) {
+            const referrer = data.users[user.referrerId];
+            if (referrer) {
+              referrer.balance += CONFIG.referralBonus;
+              referrer.referralEarnings = (referrer.referralEarnings || 0) + CONFIG.referralBonus;
+              referralBonus = CONFIG.referralBonus;
+              addTx(user.referrerId, 'referral_bonus', CONFIG.referralBonus, `推荐返现: ${order.userId} 充值 ${order.baseAmount} USDT`);
+            }
+          }
+
+          data.users[order.userId] = user;
+          saveData(data);
+          addTx(order.userId, 'recharge_complete', order.credits, 'USDT deposit confirmed', { orderId: order.orderId, txHash: tx.txID });
+
+          const userMsg = `✅ **充值到账！**\n\n金额: *${order.displayAmount} USDT*\n到账积分: *${order.credits}*\n交易Hash: \`${tx.txID}\``;
+          const adminMsg = `💰 **新充值到账！**\n\n用户: ${order.userId}\n金额: ${order.displayAmount} USDT\n积分: ${order.credits}\n订单: ${order.orderId}`;
+
+          notifyTelegram(order.userId, userMsg);
+          for (const adminId of CONFIG.admins) {
+            notifyTelegram(adminId, adminMsg);
+          }
+
+          console.log(`[充值] 订单 ${order.orderId} 已到账 ${order.displayAmount} USDT`);
+          matchCount++;
+        }
+      }
+    }
+  }
+
+  if (matchCount > 0) {
+    console.log(`[TRON检查] 匹配到 ${matchCount} 笔充值`);
+  }
+}
+
 setInterval(checkPendingOrders, CONFIG.pollInterval);
+setInterval(checkTronTransfers, CONFIG.tronPollInterval);
 checkPendingOrders();
+checkTronTransfers();
 
 app.listen(CONFIG.port, () => {
   console.log(`Billing service running on port ${CONFIG.port}`);
