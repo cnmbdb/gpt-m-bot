@@ -146,7 +146,7 @@ def main_menu_keyboard():
 
 def model_select_keyboard():
     return InlineKeyboardMarkup([
-        [InlineKeyboardButton("🎨 GPT Image 2 (50积分/张)", callback_data="gen_gpt-m2")],
+        [InlineKeyboardButton("🎨 AI (50积分/张)", callback_data="gen_gpt-m2")],
     ])
 
 
@@ -296,9 +296,31 @@ async def handle_recharge_amount(update: Update, context: ContextTypes.DEFAULT_T
 async def handle_photo_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
     chat_id = update.effective_chat.id
     user_id = str(update.effective_user.id)
+    caption = update.message.caption or ""
 
     if chat_id not in user_states:
-        await send_message(chat_id, "请先选择功能后再发送图片。输入 /sc 生成图片或 /gt 改图。")
+        if not caption.strip():
+            await send_message(chat_id, "发送图片时，请附上修改指令。\n\n格式：图片 + 修改描述（如：`把背景换成蓝色`）")
+            return
+
+        photo = update.message.photo[-1]
+        photo_file = await photo.get_file()
+        photo_bytes = await photo_file.download_as_bytearray()
+
+        limits = _check_limits(user_id)
+        if not limits.get("allowed"):
+            reason = limits.get("reason", "")
+            if reason == "rate_limit":
+                await send_message(chat_id, "⏳ 今日生成次数已达上限（5次），请明天再试。")
+            elif reason == "daily_limit":
+                await send_message(chat_id, f"⚠️ 余额不足（{limits.get('balance', 0)} 积分），请先充值后再试。")
+            else:
+                await send_message(chat_id, "⚠️ 当前无法使用，请联系管理员。")
+            return
+
+        if chat_id in user_states:
+            del user_states[chat_id]
+        await cmd_image_edit_gt(update, context, bytes(photo_bytes), caption.strip(), config.DEFAULT_IMAGE_MODEL)
         return
 
     state = user_states[chat_id]
@@ -522,7 +544,7 @@ async def cmd_me(update: Update, context: ContextTypes.DEFAULT_TYPE):
     text = (
         f"👤 **个人中心**\n\n"
         f"当前余额: **{balance} 积分**\n"
-        f"生图费用: GPT Image 2 = {config.IMAGE_COST}积分/张\n"
+        f"生图费用: AI = {config.IMAGE_COST}积分/张\n"
         f"\n💰 **交易记录:**\n"
     )
 
@@ -555,7 +577,7 @@ async def cmd_help(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 💰 **充值方式**
 USDT TRC20 充值
-地址: `TKYp9dbDs6kHKtFhFR6srEJvDARNYkq9Qe`
+地址: `TWD2GwSeLt7mRdDc3DPUfDU4B7cy81MsbM`
 比例: 1 USDT = 100 积分
 
 💳 **收费标准**

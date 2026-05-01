@@ -142,7 +142,7 @@ TRC20 链上交易自动检测
 
 ### 2. USDT 充值（自动链上检测）
 
-- 地址：TRC20（波场链）`TKYp9dbDs6kHKtFhFR6srEJvDARNYkq9Qe`
+- 地址：TRC20（波场链）`TWD2GwSeLt7mRdDc3DPUfDU4B7cy81MsbM`
 - 比例：1 USDT = 100 积分
 - 订单有效期：15 分钟
 - **防错充机制**：每个订单金额自动添加随机小数（0.01~0.99 USDT），转账时需精确到小数点后2位

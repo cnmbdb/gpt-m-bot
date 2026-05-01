@@ -126,7 +126,7 @@ check_docker() {
 
 # TRON API
 check_tron() {
-    curl -s -o /dev/null -w "%{http_code}" "https://api.trongrid.io/v1/accounts/TKYp9dbDs6kHKtFhFR6srEJvDARNYkq9Qe" 2>/dev/null | grep -q "200"
+    curl -s -o /dev/null -w "%{http_code}" "https://api.trongrid.io/v1/accounts/TWD2GwSeLt7mRdDc3DPUfDU4B7cy81MsbM" 2>/dev/null | grep -q "200"
 }
 
 all_ok=true

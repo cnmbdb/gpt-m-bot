@@ -1,5 +1,132 @@
 [
   {
+    "id": "TX_1777628595992_md8b",
+    "userId": "8277934317",
+    "type": "deduct",
+    "amount": 40,
+    "reason": "image_continue_edit",
+    "createdAt": 1777628595992
+  },
+  {
+    "id": "TX_1777628524948_ba2p",
+    "userId": "8277934317",
+    "type": "deduct",
+    "amount": 40,
+    "reason": "image_continue_edit",
+    "createdAt": 1777628524948
+  },
+  {
+    "id": "TX_1777628075716_arx0",
+    "userId": "8277934317",
+    "type": "deduct",
+    "amount": 50,
+    "reason": "image_generation_sc",
+    "createdAt": 1777628075716
+  },
+  {
+    "id": "TX_1777627659699_uwgp",
+    "userId": "8277934317",
+    "type": "deduct",
+    "amount": 50,
+    "reason": "image_edit_gt",
+    "createdAt": 1777627659699
+  },
+  {
+    "id": "TX_1777627639583_ujki",
+    "userId": "8277934317",
+    "type": "refund",
+    "amount": 50,
+    "reason": "generation_failed",
+    "createdAt": 1777627639583
+  },
+  {
+    "id": "TX_1777627639275_z00o",
+    "userId": "8277934317",
+    "type": "deduct",
+    "amount": 50,
+    "reason": "image_generation_sc_ref",
+    "createdAt": 1777627639275
+  },
+  {
+    "id": "TX_1777618273842_o0kd",
+    "userId": "8277934317",
+    "type": "deduct",
+    "amount": 40,
+    "reason": "image_continue_edit",
+    "createdAt": 1777618273842
+  },
+  {
+    "id": "TX_1777618178729_mz2f",
+    "userId": "8277934317",
+    "type": "deduct",
+    "amount": 50,
+    "reason": "image_edit_gt",
+    "createdAt": 1777618178729
+  },
+  {
+    "id": "TX_1777618000289_2b4p",
+    "userId": "8277934317",
+    "type": "recharge_complete",
+    "amount": 300,
+    "reason": "USDT deposit confirmed",
+    "createdAt": 1777618000289,
+    "orderId": "ORDER_1777617890246_uzyboe"
+  },
+  {
+    "id": "TX_1777617890247_ylps",
+    "userId": "8277934317",
+    "type": "recharge",
+    "amount": 300,
+    "reason": "USDT deposit",
+    "createdAt": 1777617890247,
+    "orderId": "ORDER_1777617890246_uzyboe",
+    "displayAmount": 3.8,
+    "coin": "USDT"
+  },
+  {
+    "id": "TX_1777617879143_c5vg",
+    "userId": "8277934317",
+    "type": "recharge",
+    "amount": 100,
+    "reason": "USDT deposit",
+    "createdAt": 1777617879143,
+    "orderId": "ORDER_1777617879136_n1rxcz",
+    "displayAmount": 1.76,
+    "coin": "USDT"
+  },
+  {
+    "id": "TX_1777617627867_eoch",
+    "userId": "8277934317",
+    "type": "deduct",
+    "amount": 50,
+    "reason": "image_edit_gt",
+    "createdAt": 1777617627867
+  },
+  {
+    "id": "TX_1777617569826_k1iq",
+    "userId": "825512163",
+    "type": "deduct",
+    "amount": 50,
+    "reason": "image_edit_gt",
+    "createdAt": 1777617569826
+  },
+  {
+    "id": "TX_1777617143477_ps2a",
+    "userId": "8277934317",
+    "type": "deduct",
+    "amount": 50,
+    "reason": "image_edit_gt",
+    "createdAt": 1777617143477
+  },
+  {
+    "id": "TX_1777616684046_xru1",
+    "userId": "825512163",
+    "type": "deduct",
+    "amount": 50,
+    "reason": "image_edit_gt",
+    "createdAt": 1777616684046
+  },
+  {
     "id": "TX_1777615589423_owxt",
     "userId": "8277934317",
     "type": "deduct",

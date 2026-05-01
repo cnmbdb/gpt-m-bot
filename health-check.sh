@@ -67,7 +67,7 @@ echo ""
 
 echo "🔗 4. TRON API 连通性"
 echo "------------------------------------------"
-TRON_CHECK=$(curl -s -o /dev/null -w "%{http_code}" "https://api.trongrid.io/v1/accounts/TKYp9dbDs6kHKtFhFR6srEJvDARNYkq9Qe" 2>/dev/null)
+TRON_CHECK=$(curl -s -o /dev/null -w "%{http_code}" "https://api.trongrid.io/v1/accounts/TWD2GwSeLt7mRdDc3DPUfDU4B7cy81MsbM" 2>/dev/null)
 if [ "$TRON_CHECK" = "200" ]; then
     echo "   ✅ Trongrid API 可达"
 else

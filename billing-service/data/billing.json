@@ -2,13 +2,13 @@
   "users": {
     "825512163": {
       "id": "825512163",
-      "balance": 99910,
+      "balance": 99810,
       "bonusClaimed": true,
       "createdAt": 1777369752478
     },
     "8277934317": {
       "id": "8277934317",
-      "balance": 900,
+      "balance": 830,
       "bonusClaimed": true,
       "createdAt": 1777369829282
     },
@@ -185,6 +185,30 @@
       "expiresAt": 1777616027943,
       "txHash": "ccbeb1831e9ed961e2a876f65a8b80cc9f6e93b3c7e4d9f8a1b2c3d4e5f6a7b8c",
       "completedAt": 1777615447437
+    },
+    "ORDER_1777617879136_n1rxcz": {
+      "id": "ORDER_1777617879136_n1rxcz",
+      "userId": "8277934317",
+      "baseAmount": 1,
+      "displayAmount": 1.76,
+      "coin": "USDT",
+      "credits": 100,
+      "status": "expired",
+      "createdAt": 1777617879138,
+      "expiresAt": 1777618779138,
+      "txHash": null
+    },
+    "ORDER_1777617890246_uzyboe": {
+      "id": "ORDER_1777617890246_uzyboe",
+      "userId": "8277934317",
+      "baseAmount": 3,
+      "displayAmount": 3.8,
+      "coin": "USDT",
+      "credits": 300,
+      "status": "completed",
+      "createdAt": 1777617890247,
+      "expiresAt": 1777618790247,
+      "completedAt": 1777618000285
     }
   }
 }

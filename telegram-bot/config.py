@@ -21,14 +21,14 @@ DEFAULT_IMAGE_MODEL = "gpt-m2"
 
 IMAGE_MODELS = {
     "gpt-m2": {
-        "name": "GPT Image 2",
+        "name": "AI",
         "cost": IMAGE_COST,
         "quality": "high",
         "provider": "local",
         "local_model": "gpt-image-2",
     },
 }
-TRC20_ADDRESS = "TKYp9dbDs6kHKtFhFR6srEJvDARNYkq9Qe"
+TRC20_ADDRESS = "TWD2GwSeLt7mRdDc3DPUfDU4B7cy81MsbM"
 GEN_SCRIPT = os.path.join(os.path.dirname(__file__), "..", "billing-service", "gen-openclaw-style.js")
 DATA_DIR = os.path.join(os.path.dirname(__file__), "data")
 LANG_FILE = os.path.join(DATA_DIR, "language-preferences.json")
@@ -38,7 +38,7 @@ if not os.path.exists(LANG_FILE):
     with open(LANG_FILE, "w") as f:
         json.dump({}, f)
 
-WELCOME_ZH = """🎉 **AI 生图** — 发送「帮我画一个图」+ 你的描述，我会用 GPT Image 2 生成高质量图片
+WELCOME_ZH = """🎉 **AI 生图** — 发送「帮我画一个图」+ 你的描述，我会用 AI 生成高质量图片
 💭 **智能对话** — 问我任何问题，我会尽力帮你解答
 ⚙️ **工具能力** — 文件读写、代码执行、网页搜索、浏览器操作等
 
@@ -51,16 +51,16 @@ WELCOME_ZH = """🎉 **AI 生图** — 发送「帮我画一个图」+ 你的描
 
 **计费说明：**
 • 1 USDT = 100 积分
-• 生图费用：GPT Image 2 = 50 积分/张
+• 生图费用：AI = 50 积分/张
 • 新用户首次使用赠送 100 积分
-• 充值地址（TRC20）：`TKYp9dbDs6kHKtFhFR6srEJvDARNYkq9Qe`
+• 充值地址（TRC20）：`TWD2GwSeLt7mRdDc3DPUfDU4B7cy81MsbM`
 • 发送 `/recharge` 即可快速充值
 
 ───
 
 有任何问题，直接发消息给我就行！"""
 
-WELCOME_EN = """🎉 **AI Image Generation** — Send 「Draw me a picture」+ your description, I'll generate high-quality images with GPT Image 2
+WELCOME_EN = """🎉 **AI Image Generation** — Send 「Draw me a picture」+ your description, I'll generate high-quality images with AI
 💭 **Smart Chat** — Ask me anything, I'll do my best to help
 ⚙️ **Tools** — File read/write, code execution, web search, browser automation, and more
 
@@ -73,16 +73,16 @@ WELCOME_EN = """🎉 **AI Image Generation** — Send 「Draw me a picture」+ y
 
 **Pricing:**
 • 1 USDT = 100 credits
-• GPT Image 2 = 50 credits/image
+• AI = 50 credits/image
 • New users get 100 free credits
-• Top-up address (TRC20): `TKYp9dbDs6kHKtFhFR6srEJvDARNYkq9Qe`
+• Top-up address (TRC20): `TWD2GwSeLt7mRdDc3DPUfDU4B7cy81MsbM`
 • Send `/recharge` to top up quickly
 
 ───
 
 Feel free to message me if you need anything!"""
 
-WELCOME_RU = """🎉 **AI Генерация изображений** — Отправьте «Нарисуй мне картинку» + ваше описание, я создам качественные изображения с GPT Image 2
+WELCOME_RU = """🎉 **AI Генерация изображений** — Отправьте «Нарисуй мне картинку» + ваше описание, я создам качественные изображения с AI
 💭 **Умный чат** — Задайте мне любой вопрос, я постараюсь помочь
 ⚙️ **Инструменты** — Чтение/запись файлов, выполнение кода, веб-поиск, автоматизация браузера и многое другое
 
@@ -95,9 +95,9 @@ WELCOME_RU = """🎉 **AI Генерация изображений** — Отп
 
 **Цены:**
 • 1 USDT = 100 кредитов
-• GPT Image 2 = 50 кредитов/изображение
+• AI = 50 кредитов/изображение
 • Новые пользователи получают 50 бесплатных кредитов
-• Адрес для пополнения (TRC20): `TKYp9dbDs6kHKtFhFR6srEJvDARNYkq9Qe`
+• Адрес для пополнения (TRC20): `TWD2GwSeLt7mRdDc3DPUfDU4B7cy81MsbM`
 • Отправьте `/recharge` для быстрого пополнения
 
 ───

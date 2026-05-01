@@ -13,7 +13,7 @@ const TX_FILE = path.join(__dirname, 'data', 'transactions.json');
 
 const CONFIG = {
   port: 4313,
-  trc20Address: 'TKYp9dbDs6kHKtFhFR6srEJvDARNYkq9Qe',
+  trc20Address: 'TWD2GwSeLt7mRdDc3DPUfDU4B7cy81MsbM',
   rechargeRate: 100,
   imageCost: 50,
   newUserBonus: 100,
@@ -23,6 +23,7 @@ const CONFIG = {
   orderTimeout: 15 * 60 * 1000,
   admins: ['825512163', '8277934317'],
   trongridApi: 'https://api.trongrid.io',
+  trongridApiKey: process.env.TRONGRID_API_KEY || '',
   telegramBotToken: process.env.TELEGRAM_BOT_TOKEN || '',
   tronPollInterval: 15000,
   lastCheckedTxTimestamp: Date.now(),
@@ -70,7 +71,13 @@ function addTx(userId, type, amount, reason, extra = {}) {
 function httpGet(url) {
   return new Promise((resolve, reject) => {
     const client = url.startsWith('https') ? https : http;
-    client.get(url, (res) => {
+    const options = {
+      headers: {}
+    };
+    if (CONFIG.trongridApiKey) {
+      options.headers['TRONGRID-API-KEY'] = CONFIG.trongridApiKey;
+    }
+    const req = client.get(url, options, (res) => {
       let data = '';
       res.on('data', chunk => data += chunk);
       res.on('end', () => {
