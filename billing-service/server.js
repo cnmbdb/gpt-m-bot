@@ -116,6 +116,28 @@ app.get('/health', (req, res) => res.json({ status: 'ok', timestamp: Date.now() 
 
 app.get('/user/:userId', (req, res) => res.json(getOrCreateUser(req.params.userId)));
 
+app.get('/limits/:userId', (req, res) => {
+  const user = getOrCreateUser(req.params.userId);
+  const today = new Date().toDateString();
+  const lastActive = user.lastActiveDate || '';
+
+  if (lastActive !== today) {
+    user.dailyCount = 0;
+    user.lastActiveDate = today;
+    saveData({ users: data.users, orders: data.orders });
+  }
+
+  const allowed = user.balance >= CONFIG.imageCost;
+  const reason = allowed ? '' : 'daily_limit';
+
+  res.json({
+    allowed,
+    reason,
+    balance: user.balance,
+    dailyCount: user.dailyCount || 0,
+  });
+});
+
 app.get('/balance/:userId', (req, res) => {
   const user = getOrCreateUser(req.params.userId);
   res.json({ userId: user.id, balance: user.balance });

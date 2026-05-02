@@ -645,13 +645,13 @@ async def cmd_pdd(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 
 def _check_limits(user_id: str) -> dict:
-    result = subprocess.run(
-        ["node", "billing-service/check-limits.js", user_id],
-        capture_output=True, text=True, timeout=10,
-    )
+    import requests as http_requests
     try:
-        return json.loads(result.stdout.strip())
-    except json.JSONDecodeError:
+        resp = http_requests.get(f"{config.BILLING_URL}/limits/{user_id}", timeout=10)
+        if resp.status_code == 200:
+            return resp.json()
+        return {"allowed": True}
+    except Exception:
         return {"allowed": True}
 
 
