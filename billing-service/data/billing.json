@@ -8,14 +8,14 @@
     },
     "8277934317": {
       "id": "8277934317",
-      "balance": 830,
+      "balance": 730,
       "bonusClaimed": true,
       "createdAt": 1777369829282
     },
     "7515427815": {
       "id": "7515427815",
-      "balance": 370,
-      "bonusClaimed": false,
+      "balance": 1470,
+      "bonusClaimed": true,
       "createdAt": 1777457280911,
       "referrerId": null,
       "referralEarnings": 0,
@@ -209,6 +209,18 @@
       "createdAt": 1777617890247,
       "expiresAt": 1777618790247,
       "completedAt": 1777618000285
+    },
+    "ORDER_1777685523396_gj8c9w": {
+      "id": "ORDER_1777685523396_gj8c9w",
+      "userId": "7515427815",
+      "baseAmount": 10,
+      "displayAmount": 10.15,
+      "coin": "USDT",
+      "credits": 1000,
+      "status": "completed",
+      "createdAt": 1777685523396,
+      "expiresAt": 1777686423396,
+      "completedAt": 1777685649700
     }
   }
 }
