@@ -1,5 +1,53 @@
 [
   {
+    "id": "TX_1777903069201_6vu3",
+    "userId": "8277934317",
+    "type": "refund",
+    "amount": 50,
+    "reason": "edit_failed",
+    "createdAt": 1777903069201
+  },
+  {
+    "id": "TX_1777901089103_cuby",
+    "userId": "8277934317",
+    "type": "deduct",
+    "amount": 50,
+    "reason": "image_edit_gt",
+    "createdAt": 1777901089103
+  },
+  {
+    "id": "TX_1777901062313_abtt",
+    "userId": "8277934317",
+    "type": "refund",
+    "amount": 50,
+    "reason": "generation_failed",
+    "createdAt": 1777901062313
+  },
+  {
+    "id": "TX_1777901061557_xwb8",
+    "userId": "8277934317",
+    "type": "deduct",
+    "amount": 50,
+    "reason": "image_generation_sc_ref",
+    "createdAt": 1777901061557
+  },
+  {
+    "id": "TX_1777900999245_yzje",
+    "userId": "8277934317",
+    "type": "refund",
+    "amount": 50,
+    "reason": "generation_failed",
+    "createdAt": 1777900999245
+  },
+  {
+    "id": "TX_1777900998479_lhuc",
+    "userId": "8277934317",
+    "type": "deduct",
+    "amount": 50,
+    "reason": "image_generation_sc_ref",
+    "createdAt": 1777900998479
+  },
+  {
     "id": "TX_1777685649704_3b2u",
     "userId": "7515427815",
     "type": "recharge_complete",

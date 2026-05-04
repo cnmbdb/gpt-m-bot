@@ -345,12 +345,8 @@ async def handle_photo_message(update: Update, context: ContextTypes.DEFAULT_TYP
         return
 
     if step == "awaiting_sc_prompt":
-        photo = update.message.photo[-1]
-        photo_file = await photo.get_file()
-        photo_bytes = await photo_file.download_as_bytearray()
-
         del user_states[chat_id]
-        await cmd_image_gen_sc_with_ref(update, context, caption.strip(), bytes(photo_bytes), state.get("model", config.DEFAULT_IMAGE_MODEL))
+        await cmd_image_gen_sc_with_ref(update, context, caption.strip(), photo_bytes_list, state.get("model", config.DEFAULT_IMAGE_MODEL))
         return
 
     await send_message(chat_id, "当前状态不需要图片，请输入描述。")
