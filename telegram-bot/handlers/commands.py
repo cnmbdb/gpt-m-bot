@@ -4,6 +4,7 @@ import asyncio
 import subprocess
 import threading
 import time
+import os
 from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup, ReplyKeyboardMarkup, KeyboardButton
 from telegram.ext import ContextTypes
 
@@ -824,10 +825,6 @@ async def cmd_image_gen_sc_with_ref(update: Update, context: ContextTypes.DEFAUL
             "last_image_data": img_data,
             "last_image_url": img_url,
         }
-
-        import sys, os
-        sys.path.insert(0, os.path.join(os.path.dirname(__file__), "../.."))
-        import config
 
         if img_url and ("127.0.0.1" in img_url or "localhost" in img_url):
             local_path = img_url.replace("http://127.0.0.1:3000/images/", config.GPT_API_IMAGES_DIR + "/")
