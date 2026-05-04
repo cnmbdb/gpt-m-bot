@@ -297,15 +297,21 @@ async def handle_photo_message(update: Update, context: ContextTypes.DEFAULT_TYP
     chat_id = update.effective_chat.id
     user_id = str(update.effective_user.id)
     caption = update.message.caption or ""
+    photos = update.message.photo or []
+
+    if not photos:
+        return
+
+    photo_bytes_list = []
+    for photo in photos:
+        photo_file = await photo.get_file()
+        photo_bytes = await photo_file.download_as_bytearray()
+        photo_bytes_list.append(bytes(photo_bytes))
 
     if chat_id not in user_states:
         if not caption.strip():
             await send_message(chat_id, "发送图片时，请附上修改指令。\n\n格式：图片 + 修改描述（如：`把背景换成蓝色`）")
             return
-
-        photo = update.message.photo[-1]
-        photo_file = await photo.get_file()
-        photo_bytes = await photo_file.download_as_bytearray()
 
         limits = _check_limits(user_id)
         if not limits.get("allowed"):
@@ -320,7 +326,7 @@ async def handle_photo_message(update: Update, context: ContextTypes.DEFAULT_TYP
 
         if chat_id in user_states:
             del user_states[chat_id]
-        await cmd_image_edit_gt(update, context, bytes(photo_bytes), caption.strip(), config.DEFAULT_IMAGE_MODEL)
+        await cmd_image_edit_gt(update, context, photo_bytes_list, caption.strip(), config.DEFAULT_IMAGE_MODEL)
         return
 
     state = user_states[chat_id]
@@ -328,18 +334,14 @@ async def handle_photo_message(update: Update, context: ContextTypes.DEFAULT_TYP
     caption = update.message.caption or ""
 
     if step == "awaiting_gt_edit":
-        photo = update.message.photo[-1]
         instruction = caption.strip()
 
         if not instruction:
             await send_message(chat_id, "请在图片说明中描述修改内容，例如：「把数字 556 改为 789」")
             return
 
-        photo_file = await photo.get_file()
-        photo_bytes = await photo_file.download_as_bytearray()
-
         del user_states[chat_id]
-        await cmd_image_edit_gt(update, context, bytes(photo_bytes), instruction, state.get("model", config.DEFAULT_IMAGE_MODEL))
+        await cmd_image_edit_gt(update, context, photo_bytes_list, instruction, state.get("model", config.DEFAULT_IMAGE_MODEL))
         return
 
     if step == "awaiting_sc_prompt":
@@ -710,7 +712,7 @@ async def cmd_image_gen_sc(update: Update, context: ContextTypes.DEFAULT_TYPE, p
         await send_message(chat_id, f"❌ 图片生成失败: {e}\n积分已退回，请稍后重试。")
 
 
-async def cmd_image_gen_sc_with_ref(update: Update, context: ContextTypes.DEFAULT_TYPE, prompt: str, ref_image: bytes, model: str = None):
+async def cmd_image_gen_sc_with_ref(update: Update, context: ContextTypes.DEFAULT_TYPE, prompt: str, ref_images: list, model: str = None):
     if model is None:
         model = config.DEFAULT_IMAGE_MODEL
     user_id = str(update.effective_user.id)
@@ -739,7 +741,7 @@ async def cmd_image_gen_sc_with_ref(update: Update, context: ContextTypes.DEFAUL
         return
 
     try:
-        img_data = image_service.generate_with_image(prompt, ref_image, model=model)
+        img_data = image_service.generate_with_image(prompt, ref_images, model=model)
         from io import BytesIO
         bio = BytesIO(img_data)
         bio.name = "generated_image.png"
@@ -810,7 +812,7 @@ async def cmd_image_continue_edit(update: Update, context: ContextTypes.DEFAULT_
         await send_message(chat_id, f"❌ 修改失败: {e}\n积分已退回，请稍后重试。")
 
 
-async def cmd_image_edit_gt(update: Update, context: ContextTypes.DEFAULT_TYPE, photo_file, instruction: str, model: str = None):
+async def cmd_image_edit_gt(update: Update, context: ContextTypes.DEFAULT_TYPE, photo_files: list, instruction: str, model: str = None):
     if model is None:
         model = config.DEFAULT_IMAGE_MODEL
     user_id = str(update.effective_user.id)
@@ -839,7 +841,7 @@ async def cmd_image_edit_gt(update: Update, context: ContextTypes.DEFAULT_TYPE, 
         return
 
     try:
-        img_data = image_service.edit_image(photo_file, instruction, model=model)
+        img_data = image_service.edit_image(photo_files, instruction, model=model)
         from io import BytesIO
         bio = BytesIO(img_data)
         bio.name = "edited_image.png"

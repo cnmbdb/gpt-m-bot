@@ -46,14 +46,14 @@ class ImageService:
         else:
             return self._generate_openai(prompt, model, size)
 
-    def generate_with_image(self, prompt: str, ref_image: bytes, model: str = "gpt-m2") -> bytes:
+    def generate_with_image(self, prompt: str, ref_images: list, model: str = "gpt-m2") -> bytes:
         model_info = self._get_model_info(model)
         provider = model_info.get("provider", "openai")
 
         if provider == "local":
-            return self._generate_local_with_image(prompt, ref_image, model_info)
+            return self._generate_local_with_image(prompt, ref_images, model_info)
         else:
-            return self._generate_openai_with_image(prompt, ref_image, model)
+            return self._generate_openai_with_image(prompt, ref_images, model)
 
     def _get_model_info(self, model: str) -> dict:
         try:
@@ -152,7 +152,7 @@ class ImageService:
 
         raise RuntimeError("No image data (b64_json or url) in response")
 
-    def _generate_local_with_image(self, prompt: str, ref_image: bytes, model_info: dict) -> bytes:
+    def _generate_local_with_image(self, prompt: str, ref_images: list, model_info: dict) -> bytes:
         import sys, os
         sys.path.insert(0, os.path.join(os.path.dirname(__file__), "../.."))
         import config
@@ -160,6 +160,10 @@ class ImageService:
         base_url = config.GPT_API_BASE_URL
         auth_key = config.GPT_API_AUTH_KEY
         local_model = model_info.get("local_model", "gpt-image-2")
+
+        files = {}
+        for i, img_data in enumerate(ref_images):
+            files[f"image{i+1}" if i > 0 else "image"] = (f"reference{i+1}.png", img_data, "image/png")
 
         response = requests.post(
             f"{base_url}/v1/images/edits",
@@ -172,8 +176,8 @@ class ImageService:
                 "n": 1,
                 "response_format": "b64_json",
             },
-            files={"image": ("reference.png", ref_image, "image/png")},
-            timeout=120,
+            files=files,
+            timeout=180,
         )
 
         if response.status_code != 200:
@@ -239,23 +243,30 @@ class ImageService:
 
         raise RuntimeError("No image data (b64_json or url) in response")
 
-    def edit_image(self, image_source, instruction: str, model: str = "gpt-m2") -> bytes:
-        """Edit an image based on instruction. image_source can be a file path or bytes."""
+    def edit_image(self, image_sources, instruction: str, model: str = "gpt-m2") -> bytes:
+        """Edit an image based on instruction. image_sources can be a list of bytes or a single bytes/image object."""
         model_info = self._get_model_info(model)
         provider = model_info.get("provider", "openai")
 
-        if isinstance(image_source, str):
-            with open(image_source, "rb") as f:
-                image_bytes = f.read()
-        else:
-            image_bytes = image_source.getvalue() if hasattr(image_source, "getvalue") else image_source
+        if not isinstance(image_sources, list):
+            image_sources = [image_sources]
+
+        image_bytes_list = []
+        for img in image_sources:
+            if isinstance(img, str):
+                with open(img, "rb") as f:
+                    image_bytes_list.append(f.read())
+            elif hasattr(img, "getvalue"):
+                image_bytes_list.append(img.getvalue())
+            elif isinstance(img, bytes):
+                image_bytes_list.append(img)
 
         if provider == "local":
-            return self._edit_local(image_bytes, instruction, model_info)
+            return self._edit_local(image_bytes_list, instruction, model_info)
         else:
-            return self._edit_openai(image_bytes, instruction, model)
+            return self._edit_openai(image_bytes_list, instruction, model)
 
-    def _edit_local(self, image_bytes: bytes, instruction: str, model_info: dict) -> bytes:
+    def _edit_local(self, image_bytes_list: list, instruction: str, model_info: dict) -> bytes:
         import sys, os
         sys.path.insert(0, os.path.join(os.path.dirname(__file__), "../.."))
         import config
@@ -264,12 +275,17 @@ class ImageService:
         auth_key = config.GPT_API_AUTH_KEY
         local_model = model_info.get("local_model", "gpt-image-2")
 
+        files = {}
+        for i, img_bytes in enumerate(image_bytes_list):
+            key = "image" if i == 0 else f"image{i+1}"
+            files[key] = (f"image{i+1}.png", img_bytes, "image/png")
+
         response = requests.post(
             f"{base_url}/v1/images/edits",
             headers={"Authorization": f"Bearer {auth_key}"},
             data={"model": local_model, "prompt": instruction, "n": 1},
-            files={"image": ("image.png", image_bytes, "image/png")},
-            timeout=120,
+            files=files,
+            timeout=180,
         )
 
         if response.status_code != 200:
