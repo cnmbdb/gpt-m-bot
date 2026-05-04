@@ -829,19 +829,14 @@ async def cmd_image_gen_sc_with_ref(update: Update, context: ContextTypes.DEFAUL
         sys.path.insert(0, os.path.join(os.path.dirname(__file__), "../.."))
         import config
 
-        local_path = None
         if img_url and ("127.0.0.1" in img_url or "localhost" in img_url):
             local_path = img_url.replace("http://127.0.0.1:3000/images/", config.GPT_API_IMAGES_DIR + "/")
             if os.path.exists(local_path):
-                with open(local_path, 'rb') as f:
-                    from io import BytesIO
-                    bio = BytesIO(f.read())
-                    bio.name = "generated_image.png"
-                    await context.bot.send_photo(
-                        chat_id=chat_id, photo=bio,
-                        caption=f"✅ {model_name} 参考图片已生成！消耗 {cost} 积分\n\n💡 如需继续修改，点击下方按钮并发送修改指令（消耗 40 积分）",
-                        reply_markup=continue_edit_keyboard(),
-                    )
+                await context.bot.send_photo(
+                    chat_id=chat_id, photo=open(local_path, 'rb'),
+                    caption=f"✅ {model_name} 参考图片已生成！消耗 {cost} 积分\n\n💡 如需继续修改，点击下方按钮并发送修改指令（消耗 40 积分）",
+                    reply_markup=continue_edit_keyboard(),
+                )
                 return
 
         if img_data:
