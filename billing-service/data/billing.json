@@ -4,7 +4,9 @@
       "id": "825512163",
       "balance": 99810,
       "bonusClaimed": true,
-      "createdAt": 1777369752478
+      "createdAt": 1777369752478,
+      "dailyCount": 0,
+      "lastActiveDate": "Mon May 04 2026"
     },
     "8277934317": {
       "id": "8277934317",

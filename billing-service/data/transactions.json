@@ -1,5 +1,21 @@
 [
   {
+    "id": "TX_1777904323514_yjml",
+    "userId": "825512163",
+    "type": "refund",
+    "amount": 50,
+    "reason": "generation_failed",
+    "createdAt": 1777904323514
+  },
+  {
+    "id": "TX_1777904272155_0tx3",
+    "userId": "825512163",
+    "type": "deduct",
+    "amount": 50,
+    "reason": "image_generation_sc_ref",
+    "createdAt": 1777904272155
+  },
+  {
     "id": "TX_1777903690043_hbtn",
     "userId": "825512163",
     "type": "refund",

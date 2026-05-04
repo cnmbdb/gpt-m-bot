@@ -117,6 +117,7 @@ app.get('/health', (req, res) => res.json({ status: 'ok', timestamp: Date.now() 
 app.get('/user/:userId', (req, res) => res.json(getOrCreateUser(req.params.userId)));
 
 app.get('/limits/:userId', (req, res) => {
+  const currentData = loadData();
   const user = getOrCreateUser(req.params.userId);
   const today = new Date().toDateString();
   const lastActive = user.lastActiveDate || '';
@@ -124,7 +125,8 @@ app.get('/limits/:userId', (req, res) => {
   if (lastActive !== today) {
     user.dailyCount = 0;
     user.lastActiveDate = today;
-    saveData({ users: data.users, orders: data.orders });
+    currentData.users[user.id] = user;
+    saveData(currentData);
   }
 
   const allowed = user.balance >= CONFIG.imageCost;
