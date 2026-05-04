@@ -25,7 +25,7 @@ class ImageService:
             ["node", self.script, prompt, output_path],
             capture_output=True,
             text=True,
-            timeout=120,
+            timeout=300,
             env={**os.environ, "OPENAI_API_KEY": config.OPENAI_API_KEY}
         )
 
@@ -85,7 +85,7 @@ class ImageService:
                 "n": 1,
                 "response_format": "b64_json",
             },
-            timeout=120,
+            timeout=300,
         )
 
         if response.status_code != 200:
@@ -130,7 +130,7 @@ class ImageService:
                 "Content-Type": "application/json",
             },
             json=payload,
-            timeout=120,
+            timeout=300,
         )
 
         if response.status_code != 200:
@@ -177,7 +177,7 @@ class ImageService:
                 "response_format": "b64_json",
             },
             files=files,
-            timeout=180,
+            timeout=300,
         )
 
         if response.status_code != 200:
@@ -221,7 +221,7 @@ class ImageService:
                 "n": 1,
             },
             files={"image": ("reference.png", ref_image, "image/png")},
-            timeout=120,
+            timeout=300,
         )
 
         if response.status_code != 200:
@@ -285,7 +285,7 @@ class ImageService:
             headers={"Authorization": f"Bearer {auth_key}"},
             data={"model": local_model, "prompt": instruction, "n": 1},
             files=files,
-            timeout=180,
+            timeout=300,
         )
 
         if response.status_code != 200:
@@ -323,7 +323,7 @@ class ImageService:
             headers={"Authorization": f"Bearer {config.OPENAI_API_KEY}"},
             data={"model": actual, "prompt": instruction, "n": 1},
             files={"image": ("image.png", image_bytes, "image/png")},
-            timeout=120,
+            timeout=300,
         )
 
         if response.status_code != 200:
