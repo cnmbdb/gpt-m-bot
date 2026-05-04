@@ -158,7 +158,21 @@ class ImageService:
 
         raise RuntimeError("No image data (b64_json or url) in response")
 
-    def _generate_local_with_image(self, prompt: str, ref_images: list, model_info: dict) -> bytes:
+    def generate_with_image(self, prompt: str, ref_images: list, model: str = "gpt-m2") -> tuple[bytes, str]:
+        """Returns (image_bytes, image_url). Use URL directly for Telegram to avoid timeout."""
+        model_info = self._get_model_info(model)
+        provider = model_info.get("provider", "openai")
+
+        if provider == "local":
+            img_bytes, img_url = self._generate_local_with_image_url(prompt, ref_images, model_info)
+            return img_bytes, img_url
+        else:
+            img_bytes = self._generate_openai_with_image(prompt, ref_images, model)
+            url = self._get_image_url(img_bytes) or ""
+            return img_bytes, url
+
+    def _generate_local_with_image_url(self, prompt: str, ref_images: list, model_info: dict) -> tuple[bytes, str]:
+        """Generate image with reference images and return both bytes and URL."""
         import sys, os, base64
         sys.path.insert(0, os.path.join(os.path.dirname(__file__), "../.."))
         import config
@@ -167,14 +181,10 @@ class ImageService:
         auth_key = config.GPT_API_AUTH_KEY
         local_model = model_info.get("local_model", "gpt-image-2")
 
-        # 构建 multipart 请求：图片作为文件上传，prompt 等作为 form 字段
         files = []
         for i, img_data in enumerate(ref_images):
-            # 第一张用 image，后续用 image[]（gpt-api 格式）
             field_name = "image" if i == 0 else "image[]"
             files.append((field_name, (f"reference{i+1}.png", img_data, "image/png")))
-
-        print(f"[DEBUG] 调用API: {base_url}/v1/images/edits, 参考图片数: {len(ref_images)}")
 
         response = requests.post(
             f"{base_url}/v1/images/edits",
@@ -184,53 +194,22 @@ class ImageService:
             timeout=600,
         )
 
-        print(f"[DEBUG] API响应状态: {response.status_code}")
-        print(f"[DEBUG] 响应内容: {response.text[:500]}")
-
         if response.status_code != 200:
             raise RuntimeError(f"Local API error {response.status_code}: {response.text[:200]}")
 
         data = response.json()
-        print(f"[DEBUG] API响应数据keys: {list(data.keys())}")
-
         if "error" in data:
             raise RuntimeError(data["error"].get("message", str(data["error"])))
 
-        url = data["data"][0].get("url")
-        print(f"[DEBUG] url存在: {bool(url)}")
+        url = data["data"][0].get("url", "")
+        b64 = data["data"][0].get("b64_json", "")
 
-        if url:
-            # url = http://127.0.0.1:3000/images/2026/05/04/xxx.png
-            # GPT_API_IMAGES_DIR = /Users/a2333/IDE/gpt-huatu/gpt-api/data/images
-            # local_path = /Users/a2333/IDE/gpt-huatu/gpt-api/data/images/2026/05/04/xxx.png
-            local_path = url.replace(f"{base_url}/images/", f"{config.GPT_API_IMAGES_DIR}/")
-            img_file = local_path
-            if os.path.exists(img_file):
-                print(f"[DEBUG] 图片本地路径: {img_file}")
-                return open(img_file, "rb").read(), img_file
-            raise RuntimeError(f"图片文件不存在: {img_file}")
+        if b64:
+            return base64.b64decode(b64), url
+        elif url:
+            return b"", url
 
-        b64 = data["data"][0].get("b64_json")
-        print(f"[DEBUG] b64_json存在: {bool(b64)}, 长度: {len(b64) if b64 else 0}")
-
-        if not b64:
-            raise RuntimeError("No image data (url or b64_json) in response")
-
-        img_bytes = base64.b64decode(b64)
-        path = self._save_to_temp(img_bytes)
-        print(f"[DEBUG] 图片已保存: {path}")
-        return img_bytes, path
-
-    def _save_to_temp(self, img_bytes: bytes) -> str:
-        import tempfile, hashlib
-        file_hash = hashlib.md5(img_bytes[:1024]).hexdigest()
-        filename = f"gen_{int(time.time())}_{file_hash}.png"
-        out_dir = os.path.join(tempfile.gettempdir(), "codex-imagegen-service")
-        os.makedirs(out_dir, exist_ok=True)
-        path = os.path.join(out_dir, filename)
-        with open(path, "wb") as f:
-            f.write(img_bytes)
-        return path
+        raise RuntimeError("No image data (b64_json or url) in response")
 
     def _generate_openai_with_image(self, prompt: str, ref_image: bytes, model: str) -> bytes:
         import sys, os

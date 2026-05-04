@@ -815,20 +815,33 @@ async def cmd_image_gen_sc_with_ref(update: Update, context: ContextTypes.DEFAUL
         return
 
     try:
-        img_data, img_path = image_service.generate_with_image(prompt, ref_images, model=model)
+        img_data, img_url = image_service.generate_with_image(prompt, ref_images, model=model)
 
         user_states[chat_id] = {
             "step": "idle",
             "user_id": user_id,
             "model": model,
             "last_image_data": img_data,
+            "last_image_url": img_url,
         }
 
-        await context.bot.send_photo(
-            chat_id=chat_id, photo=img_path,
-            caption=f"✅ {model_name} 参考图片已生成！消耗 {cost} 积分\n\n💡 如需继续修改，点击下方按钮并发送修改指令（消耗 40 积分）",
-            reply_markup=continue_edit_keyboard(),
-        )
+        if img_url and img_url.startswith("http"):
+            await context.bot.send_photo(
+                chat_id=chat_id, photo=img_url,
+                caption=f"✅ {model_name} 参考图片已生成！消耗 {cost} 积分\n\n💡 如需继续修改，点击下方按钮并发送修改指令（消耗 40 积分）",
+                reply_markup=continue_edit_keyboard(),
+            )
+        elif img_data:
+            from io import BytesIO
+            bio = BytesIO(img_data)
+            bio.name = "generated_image.png"
+            await context.bot.send_photo(
+                chat_id=chat_id, photo=bio,
+                caption=f"✅ {model_name} 参考图片已生成！消耗 {cost} 积分\n\n💡 如需继续修改，点击下方按钮并发送修改指令（消耗 40 积分）",
+                reply_markup=continue_edit_keyboard(),
+            )
+        else:
+            raise RuntimeError("无法获取图片数据")
     except Exception as e:
         try:
             billing.refund(user_id, cost, "generation_failed")
