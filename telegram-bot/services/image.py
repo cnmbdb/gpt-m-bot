@@ -101,7 +101,7 @@ class ImageService:
 
         url = data["data"][0].get("url")
         if url:
-            img_resp = requests.get(url, timeout=60)
+            img_resp = requests.get(url, timeout=300)
             img_resp.raise_for_status()
             return img_resp.content
 
@@ -146,7 +146,7 @@ class ImageService:
 
         url = data["data"][0].get("url")
         if url:
-            img_resp = requests.get(url, timeout=60)
+            img_resp = requests.get(url, timeout=300)
             img_resp.raise_for_status()
             return img_resp.content
 
@@ -193,7 +193,7 @@ class ImageService:
 
         url = data["data"][0].get("url")
         if url:
-            img_resp = requests.get(url, timeout=60)
+            img_resp = requests.get(url, timeout=300)
             img_resp.raise_for_status()
             return img_resp.content
 
@@ -237,7 +237,7 @@ class ImageService:
 
         url = data["data"][0].get("url")
         if url:
-            img_resp = requests.get(url, timeout=60)
+            img_resp = requests.get(url, timeout=300)
             img_resp.raise_for_status()
             return img_resp.content
 
@@ -301,7 +301,7 @@ class ImageService:
 
         url = data["data"][0].get("url")
         if url:
-            img_resp = requests.get(url, timeout=60)
+            img_resp = requests.get(url, timeout=300)
             img_resp.raise_for_status()
             return img_resp.content
 
@@ -339,7 +339,7 @@ class ImageService:
 
         url = data["data"][0].get("url")
         if url:
-            img_resp = requests.get(url, timeout=60)
+            img_resp = requests.get(url, timeout=300)
             img_resp.raise_for_status()
             return img_resp.content
 
