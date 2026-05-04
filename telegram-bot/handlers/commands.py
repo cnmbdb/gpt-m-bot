@@ -967,7 +967,7 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await send_message(chat_id, "🎨 请选择操作：", action_select_keyboard())
         return
 
-    if text == "💰 充值余额" or "充值" in text:
+    if text == "💰 充值余额":
         await cmd_recharge(update, context)
         return
 
