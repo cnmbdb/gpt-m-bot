@@ -16,6 +16,7 @@ DEFAULT_IMAGE_MODEL = "gpt-m2"
 
 GPT_API_BASE_URL = os.getenv("GPT_API_BASE_URL", "http://127.0.0.1:3000")
 GPT_API_AUTH_KEY = os.getenv("GPT_API_AUTH_KEY", "chatgpt2api")
+GPT_API_IMAGES_DIR = os.getenv("GPT_API_IMAGES_DIR", "/Users/a2333/IDE/gpt-huatu/gpt-api/data/images")
 
 DEFAULT_IMAGE_MODEL = "gpt-m2"
 

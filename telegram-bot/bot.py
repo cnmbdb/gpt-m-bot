@@ -101,7 +101,7 @@ def main():
     app.add_handler(CommandHandler("zs", zs_cmd))
     app.add_handler(CallbackQueryHandler(callback_handler))
     app.add_handler(MessageHandler(
-        filters.PHOTO,
+        filters.PHOTO & ~filters.COMMAND,
         commands.handle_photo_message
     ))
     app.add_handler(MessageHandler(

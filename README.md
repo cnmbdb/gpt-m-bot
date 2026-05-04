@@ -70,6 +70,7 @@ OPENAI_API_KEY=your_openai_api_key_here
 BILLING_URL=http://127.0.0.1:4313
 GPT_API_BASE_URL=http://127.0.0.1:3000
 GPT_API_AUTH_KEY=chatgpt2api
+GPT_API_IMAGES_DIR=/path/to/gpt-huatu/gpt-api/data/images
 ```
 
 ---
@@ -86,13 +87,17 @@ Telegram 机器人 (Python)
 计费服务    GPT API 本地反代
 (Node.js)   (chatgpt2api Docker)
 端口:4313   端口:3000
-  ↓
-TRC20 链上交易自动检测
+              ↓
+         图片生成后保存到本地目录
+         /gpt-api/data/images/
+              ↓
+         机器人直接读本地文件
+         发送给用户（无需网络下载）
 ```
 
 - **telegram-bot**: 处理用户交互、扣费、协调
 - **billing-service**: 用户余额、订单、交易记录、TRON 自动轮询检测
-- **gpt-api**: 本地运行 chatgpt2api，通过 ChatGPT 账号调用 gpt-image-2
+- **gpt-api**: 本地运行 chatgpt2api，通过 ChatGPT 账号调用 gpt-image-2，图片保存到 `data/images/` 目录供 bot 直接读取
 
 ---
 
@@ -286,10 +291,17 @@ TRC20 链上交易自动检测
    │  └─ 支持单张或多张参考图片
    └─ 「✏️ 修改图片」→ 发送图片+描述 → 修改图片（50积分）
       └─ 支持单张或多张图片同时修改
-3. 图片生成后，点击「✏️ 继续修改图片」
-4. 输入修改指令 → 修改图片（40积分/次）
-5. 重复步骤 3-4 可无限次继续修改
+3. gpt-api 生成图片 → 保存到本地 /gpt-api/data/images/
+4. 机器人直接读取本地文件路径 → 发送给 Telegram 用户
+5. 图片生成后，点击「✏️ 继续修改图片」
+6. 输入修改指令 → 修改图片（40积分/次）
+7. 重复步骤 5-6 可无限次继续修改
 ```
+
+**本地文件流程（无需 ngrok）：**
+- gpt-api 生成图片后，返回 URL: `http://127.0.0.1:3000/images/2026/05/05/xxx.png`
+- 机器人将 URL 路径映射到本地: `/gpt-api/data/images/2026/05/05/xxx.png`
+- 直接用本地文件路径发送给 Telegram，无网络下载延迟
 
 ---
 
@@ -316,5 +328,7 @@ billing-service 每 15 秒轮询 trongrid.io
 - 地址：`http://127.0.0.1:3000`
 - 鉴权 key：`chatgpt2api`
 - 模型：`gpt-image-2`
+- 图片存储：`/gpt-api/data/images/`（Docker 挂载到宿主机）
+- `config.json` 中 `base_url` 设为 `http://127.0.0.1:3000`，返回本地文件路径供 bot 直接读取
 
 需要导入有效的 ChatGPT Plus 账号才能使用。

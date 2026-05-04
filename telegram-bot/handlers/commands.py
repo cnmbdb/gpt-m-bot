@@ -18,8 +18,12 @@ image_service = image_svc.ImageService()
 
 # In-memory state for multi-step flows
 user_states: dict[int, dict] = {}
-# Active polling jobs: {chat_id: {"order_id": str, "message_id": int, "stop_event": threading.Event}}
-active_polls: dict[int, dict] = {}
+# Active polling jobs: {(user_id, chat_id): {"order_id": str, "message_id": int, "stop_event": threading.Event}}
+active_polls: dict[tuple, dict] = {}
+# Album collection: {album_key: {"photos": [], "caption": "", "count": int, "timer": asyncio.Task}}
+# album_key = f"{user_id}:{media_group_id}" to isolate users
+pending_albums: dict[str, dict] = {}
+ALBUM_COLLECT_DELAY = 0.5  # seconds to wait for album photos
 
 POLL_INTERVAL = 5
 ORDER_TIMEOUT = 15 * 60
@@ -293,24 +297,95 @@ async def handle_recharge_amount(update: Update, context: ContextTypes.DEFAULT_T
     return True
 
 
+# Album collection: {media_group_id: {"photos": [], "caption": "", "user_id": int, "message_id": int, "processed": bool}}
+pending_albums: dict[str, dict] = {}
+
+
 async def handle_photo_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """Handle single photos and album photo grouping."""
+    global pending_albums
+
     chat_id = update.effective_chat.id
     user_id = str(update.effective_user.id)
-    caption = update.message.caption or ""
-    photos = update.message.photo or []
+    message = update.message
+    photos = message.photo or []
+    caption = message.caption or ""
+    media_group_id = message.media_group_id
 
     if not photos:
         return
 
+    # If this is part of an album (has media_group_id)
+    if media_group_id:
+        album_key = f"{user_id}:{media_group_id}"
+        album = pending_albums.get(album_key)
+
+        if album is None:
+            # First photo in album - start collecting
+            pending_albums[album_key] = {
+                "photos": list(photos),
+                "caption": caption,
+                "user_id": update.effective_user.id,
+                "message_id": message.message_id,
+                "chat_id": chat_id,
+                "context": context,
+                "processed": False,
+            }
+            # Schedule processing after a short delay
+            loop = asyncio.get_event_loop()
+            loop.create_task(_process_album_after_delay(album_key))
+            return
+
+        if not album["processed"]:
+            # Add to existing album
+            album["photos"].extend(photos)
+            if caption:
+                album["caption"] = caption
+        return
+
+    # Single photo (no media_group_id) - process immediately
+    await _process_single_or_album(chat_id, user_id, photos, caption, context)
+
+
+async def _process_album_after_delay(album_key: str):
+    """Wait for all album photos to arrive, then process."""
+    await asyncio.sleep(1.5)  # Wait for all photos to arrive
+
+    album = pending_albums.get(album_key)
+    if not album or album["processed"]:
+        return
+
+    album["processed"] = True
+    photos = album["photos"]
+    caption = album["caption"]
+    user_id = str(album["user_id"])
+    chat_id = album["chat_id"]
+    context = album["context"]
+
+    # Download all photos
     photo_bytes_list = []
     for photo in photos:
         photo_file = await photo.get_file()
         photo_bytes = await photo_file.download_as_bytearray()
         photo_bytes_list.append(bytes(photo_bytes))
 
+    # Clean up
+    del pending_albums[album_key]
+
+    await _process_single_or_album(chat_id, user_id, photo_bytes_list, caption, context)
+
+
+async def _process_single_or_album(chat_id: int, user_id: str, photo_bytes_list: list, caption: str, context: ContextTypes.DEFAULT_TYPE):
+    """Process photo(s) with caption as edit or generation request."""
+    # Handle multiple photos as generation from reference images
+    is_album = len(photo_bytes_list) > 1
+
     if chat_id not in user_states:
         if not caption.strip():
-            await send_message(chat_id, "发送图片时，请附上修改指令。\n\n格式：图片 + 修改描述（如：`把背景换成蓝色`）")
+            if is_album:
+                await send_message(chat_id, "发送多张图片时，请在文字中描述想要生成的图片（如：「把这张图的风格应用到那张图」）")
+            else:
+                await send_message(chat_id, "发送图片时，请附上修改指令。\n\n格式：图片 + 修改描述（如：`把背景换成蓝色`）")
             return
 
         limits = _check_limits(user_id)
@@ -324,29 +399,32 @@ async def handle_photo_message(update: Update, context: ContextTypes.DEFAULT_TYP
                 await send_message(chat_id, "⚠️ 当前无法使用，请联系管理员。")
             return
 
-        if chat_id in user_states:
-            del user_states[chat_id]
-        await cmd_image_edit_gt(update, context, photo_bytes_list, caption.strip(), config.DEFAULT_IMAGE_MODEL)
+        if is_album:
+            # Multiple photos: use as reference for generation
+            await cmd_image_edit_gt(None, context, photo_bytes_list, caption.strip(), config.DEFAULT_IMAGE_MODEL, explicit_user_id=user_id, explicit_chat_id=chat_id)
+        else:
+            # Single photo: use as edit
+            await cmd_image_edit_gt(None, context, photo_bytes_list, caption.strip(), config.DEFAULT_IMAGE_MODEL, explicit_user_id=user_id, explicit_chat_id=chat_id)
         return
 
     state = user_states[chat_id]
     step = state.get("step")
-    caption = update.message.caption or ""
+    instruction = caption.strip()
 
     if step == "awaiting_gt_edit":
-        instruction = caption.strip()
-
         if not instruction:
             await send_message(chat_id, "请在图片说明中描述修改内容，例如：「把数字 556 改为 789」")
             return
-
         del user_states[chat_id]
-        await cmd_image_edit_gt(update, context, photo_bytes_list, instruction, state.get("model", config.DEFAULT_IMAGE_MODEL))
+        await cmd_image_edit_gt(None, context, photo_bytes_list, instruction, state.get("model", config.DEFAULT_IMAGE_MODEL), explicit_user_id=user_id, explicit_chat_id=chat_id)
         return
 
     if step == "awaiting_sc_prompt":
+        if not instruction:
+            await send_message(chat_id, "请在图片说明中描述想要生成的图片")
+            return
         del user_states[chat_id]
-        await cmd_image_gen_sc_with_ref(update, context, caption.strip(), photo_bytes_list, state.get("model", config.DEFAULT_IMAGE_MODEL))
+        await cmd_image_gen_sc_with_ref(None, context, instruction, photo_bytes_list, state.get("model", config.DEFAULT_IMAGE_MODEL), explicit_user_id=user_id, explicit_chat_id=chat_id)
         return
 
     await send_message(chat_id, "当前状态不需要图片，请输入描述。")
@@ -708,11 +786,11 @@ async def cmd_image_gen_sc(update: Update, context: ContextTypes.DEFAULT_TYPE, p
         await send_message(chat_id, f"❌ 图片生成失败: {e}\n积分已退回，请稍后重试。")
 
 
-async def cmd_image_gen_sc_with_ref(update: Update, context: ContextTypes.DEFAULT_TYPE, prompt: str, ref_images: list, model: str = None):
+async def cmd_image_gen_sc_with_ref(update: Update, context: ContextTypes.DEFAULT_TYPE, prompt: str, ref_images: list, model: str = None, explicit_user_id: str = None, explicit_chat_id: int = None):
     if model is None:
         model = config.DEFAULT_IMAGE_MODEL
-    user_id = str(update.effective_user.id)
-    chat_id = update.effective_chat.id
+    user_id = str(update.effective_user.id if update else explicit_user_id)
+    chat_id = update.effective_chat.id if update else explicit_chat_id
     model_info = config.IMAGE_MODELS.get(model, config.IMAGE_MODELS[config.DEFAULT_IMAGE_MODEL])
     cost = model_info["cost"]
     model_name = model_info["name"]
@@ -737,11 +815,7 @@ async def cmd_image_gen_sc_with_ref(update: Update, context: ContextTypes.DEFAUL
         return
 
     try:
-        img_data = image_service.generate_with_image(prompt, ref_images, model=model)
-        from io import BytesIO
-        bio = BytesIO(img_data)
-        bio.name = "generated_image.png"
-        bio.seek(0)
+        img_data, img_path = image_service.generate_with_image(prompt, ref_images, model=model)
 
         user_states[chat_id] = {
             "step": "idle",
@@ -751,7 +825,7 @@ async def cmd_image_gen_sc_with_ref(update: Update, context: ContextTypes.DEFAUL
         }
 
         await context.bot.send_photo(
-            chat_id=chat_id, photo=bio,
+            chat_id=chat_id, photo=img_path,
             caption=f"✅ {model_name} 参考图片已生成！消耗 {cost} 积分\n\n💡 如需继续修改，点击下方按钮并发送修改指令（消耗 40 积分）",
             reply_markup=continue_edit_keyboard(),
         )
@@ -808,11 +882,11 @@ async def cmd_image_continue_edit(update: Update, context: ContextTypes.DEFAULT_
         await send_message(chat_id, f"❌ 修改失败: {e}\n积分已退回，请稍后重试。")
 
 
-async def cmd_image_edit_gt(update: Update, context: ContextTypes.DEFAULT_TYPE, photo_files: list, instruction: str, model: str = None):
+async def cmd_image_edit_gt(update: Update, context: ContextTypes.DEFAULT_TYPE, photo_files: list, instruction: str, model: str = None, explicit_user_id: str = None, explicit_chat_id: int = None):
     if model is None:
         model = config.DEFAULT_IMAGE_MODEL
-    user_id = str(update.effective_user.id)
-    chat_id = update.effective_chat.id
+    user_id = str(update.effective_user.id if update else explicit_user_id)
+    chat_id = update.effective_chat.id if update else explicit_chat_id
     model_info = config.IMAGE_MODELS.get(model, config.IMAGE_MODELS[config.DEFAULT_IMAGE_MODEL])
     cost = model_info["cost"]
     model_name = model_info["name"]
