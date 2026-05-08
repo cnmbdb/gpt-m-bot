@@ -89,8 +89,16 @@ def main():
         logger.error("TELEGRAM_BOT_TOKEN not set! Please set it in .env file.")
         return
 
-    app = Application.builder().token(config.BOT_TOKEN).build()
-    app.post_init = post_init
+    app = (
+        Application.builder()
+        .token(config.BOT_TOKEN)
+        .connection_pool_size(10)
+        .http_version("1.1")
+        .post_init(post_init)
+        .build()
+    )
+    
+    app.bot.request.timeout = 60
 
     app.add_handler(CommandHandler("start", start_cmd))
     app.add_handler(CommandHandler("recharge", recharge_cmd))
