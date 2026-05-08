@@ -1,0 +1,32 @@
+{
+  "mail": {
+    "request_timeout": 30,
+    "wait_timeout": 30,
+    "wait_interval": 2,
+    "providers": []
+  },
+  "proxy": "",
+  "total": 10,
+  "threads": 3,
+  "mode": "total",
+  "target_quota": 100,
+  "target_available": 10,
+  "check_interval": 5,
+  "enabled": false,
+  "stats": {
+    "job_id": "d367aafe02334001895e39cba9b994e2",
+    "success": 0,
+    "fail": 10,
+    "done": 10,
+    "running": 0,
+    "threads": 3,
+    "current_quota": 0,
+    "current_available": 1,
+    "started_at": "2026-05-04T17:22:28.059656+00:00",
+    "updated_at": "2026-05-04T17:22:28.103818+00:00",
+    "elapsed_seconds": 0.0,
+    "avg_seconds": 0,
+    "success_rate": 0.0,
+    "finished_at": "2026-05-04T17:22:28.103808+00:00"
+  }
+}

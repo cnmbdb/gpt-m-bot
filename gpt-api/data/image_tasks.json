@@ -1,0 +1,49 @@
+{
+  "tasks": [
+    {
+      "id": "ddd1b5df-e058-4609-9da6-38256f450db0-0",
+      "owner_id": "admin",
+      "status": "success",
+      "mode": "edit",
+      "model": "gpt-image-2",
+      "size": "16:9",
+      "created_at": "2026-05-07 10:41:18",
+      "updated_at": "2026-05-07 10:42:09",
+      "error": "",
+      "data": [
+        {
+          "url": "http://127.0.0.1:3000/images/2026/05/07/1778150529_5cefff15e86a3730a64ec76bbb612e6a.png",
+          "revised_prompt": "give me the background out of it, exact background, no need of any text and buttons from it, no navbar, and the bottom logos\r\nsame color grading of the background as in the scree Batch size igher quality,I need a PC-sized screen, and I need 4K resolution."
+        }
+      ]
+    },
+    {
+      "id": "efac7497-d3a6-4f0b-898a-fdcccb85dac1-0",
+      "owner_id": "admin",
+      "status": "success",
+      "mode": "edit",
+      "model": "gpt-image-2",
+      "size": "",
+      "created_at": "2026-05-04 17:22:15",
+      "updated_at": "2026-05-04 17:23:10",
+      "data": [
+        {
+          "url": "http://localhost:3000/images/2026/05/04/1777915390_8bf4fb09762b3b27b3529d17b67c3e6c.png",
+          "revised_prompt": "背景改成白色"
+        }
+      ]
+    },
+    {
+      "id": "fad20f6d-54ed-438a-a11e-80d359af6c60-0",
+      "owner_id": "admin",
+      "status": "error",
+      "mode": "edit",
+      "model": "gpt-image-2",
+      "size": "",
+      "created_at": "2026-05-04 17:06:02",
+      "updated_at": "2026-05-04 17:06:44",
+      "data": [],
+      "error": "upstream image connection failed, please retry later"
+    }
+  ]
+}
