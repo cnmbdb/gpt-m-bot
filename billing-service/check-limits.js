@@ -3,7 +3,7 @@ const fs = require('fs');
 const path = require('path');
 
 const DATA_FILE = path.join(__dirname, 'data', 'billing.json');
-const ADMIN_IDS = ['825512163', '8277934317'];
+const ADMIN_IDS = (process.env.ADMIN_IDS || '825512163,8277934317').split(',').map(s => s.trim());
 
 function loadData() {
   try {

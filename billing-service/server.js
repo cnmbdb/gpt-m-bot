@@ -21,7 +21,7 @@ const CONFIG = {
   referralMinRecharge: 10,
   pollInterval: 10000,
   orderTimeout: 15 * 60 * 1000,
-  admins: ['825512163', '8277934317'],
+  admins: (process.env.ADMIN_IDS || '825512163,8277934317').split(',').map(s => s.trim()),
   trongridApi: 'https://api.trongrid.io',
   trongridApiKey: process.env.TRONGRID_API_KEY || '',
   telegramBotToken: process.env.TELEGRAM_BOT_TOKEN || '',

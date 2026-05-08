@@ -6,19 +6,19 @@ OPENAI_API_KEY = os.getenv("OPENAI_API_KEY", "")
 
 BILLING_URL = os.getenv("BILLING_URL", "http://127.0.0.1:4313")
 
-ADMIN_IDS = [825512163, 8277934317]
+_admin_ids_env = os.getenv("ADMIN_IDS", "825512163,8277934317")
+ADMIN_IDS = [int(x.strip()) for x in _admin_ids_env.split(",") if x.strip()]
 
-IMAGE_COST = 50
-IMAGE_COST_M2 = 50
-RECHARGE_RATE = 100
-NEW_USER_BONUS = 100
+IMAGE_COST = int(os.getenv("IMAGE_COST", "50"))
+IMAGE_COST_M2 = int(os.getenv("IMAGE_COST_M2", "50"))
+RECHARGE_RATE = int(os.getenv("RECHARGE_RATE", "100"))
+NEW_USER_BONUS = int(os.getenv("NEW_USER_BONUS", "100"))
 DEFAULT_IMAGE_MODEL = "gpt-m2"
 
 GPT_API_BASE_URL = os.getenv("GPT_API_BASE_URL", "http://127.0.0.1:3000")
 GPT_API_AUTH_KEY = os.getenv("GPT_API_AUTH_KEY", "chatgpt2api")
-GPT_API_IMAGES_DIR = os.getenv("GPT_API_IMAGES_DIR", "/Users/a2333/IDE/gpt-huatu/gpt-api/data/images")
-
-DEFAULT_IMAGE_MODEL = "gpt-m2"
+_default_images_dir = os.path.join(os.path.dirname(__file__), "..", "gpt-api", "data", "images")
+GPT_API_IMAGES_DIR = os.getenv("GPT_API_IMAGES_DIR", _default_images_dir)
 
 IMAGE_MODELS = {
     "gpt-m2": {

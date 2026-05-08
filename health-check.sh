@@ -1,5 +1,7 @@
 #!/bin/bash
 
+SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
+
 echo "=========================================="
 echo "      项目健康检查"
 echo "=========================================="
@@ -12,12 +14,6 @@ echo "------------------------------------------"
 BOT_PID=$(ps aux | grep "python.*bot.py" | grep -v grep | awk '{print $2}' | head -1)
 if [ -n "$BOT_PID" ]; then
     echo "   ✅ 运行中 (PID: $BOT_PID)"
-    BOT_RECENT=$(grep -c "Application started" /Users/a2333/IDE/gpt-huatu/telegram-bot/bot.log 2>/dev/null || echo "0")
-    if [ "$BOT_RECENT" -gt 0 ]; then
-        echo "   ✅ 日志正常"
-    else
-        echo "   ⚠️ 日志无启动记录"
-    fi
 else
     echo "   ❌ 未运行"
     all_ok=false
@@ -77,8 +73,9 @@ echo ""
 
 echo "📊 5. 数据统计"
 echo "------------------------------------------"
-if [ -f /Users/a2333/IDE/gpt-huatu/billing-service/data/billing.json ]; then
-    USER_COUNT=$(grep -c '"id":' /Users/a2333/IDE/gpt-huatu/billing-service/data/billing.json 2>/dev/null || echo "0")
+BILLING_FILE="$SCRIPT_DIR/billing-service/data/billing.json"
+if [ -f "$BILLING_FILE" ]; then
+    USER_COUNT=$(grep -c '"id":' "$BILLING_FILE" 2>/dev/null || echo "0")
     echo "   👥 用户数: $USER_COUNT"
 fi
 
