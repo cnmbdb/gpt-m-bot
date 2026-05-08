@@ -1,11 +1,12 @@
 #!/usr/bin/env python3
 """检查 API Key 的访问范围和权限"""
 
+import os
 import requests
 import json
 from datetime import datetime
 
-API_KEY = "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"
+API_KEY = os.getenv("OPENAI_API_KEY", "")
 
 def check_key_type():
     """检查 API Key 类型"""

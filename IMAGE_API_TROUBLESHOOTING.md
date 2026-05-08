@@ -90,7 +90,7 @@ and click on Verify Organization.
 ### 诊断工具
 运行以下命令检查当前 API 状态：
 ```bash
-cd /Users/a2333/IDE/gpt-huatu
+cd gpt-huatu
 python3 diagnose-image-api.py
 ```
 
@@ -139,7 +139,7 @@ curl -s https://api.openai.com/v1/images/generations \
    - 机器人现在应该可以正常生成图片了
    - 重启 Telegram 机器人以加载新代码
    ```bash
-   cd /Users/a2333/IDE/gpt-huatu
+   cd gpt-huatu
    ./stop.sh
    ./start.sh
    ```

@@ -22,7 +22,7 @@ if ! command -v node &> /dev/null; then
     exit 1
 fi
 if ! command -v python3 &> /dev/null; then
-    echo "❌ 错误: 未找到 python3，请先安装 Python 3.10+"
+    echo "❌ 错误: 未找到 python3，请先安装 Python 3.11+"
     exit 1
 fi
 
@@ -64,7 +64,7 @@ echo ""
 echo "[2/3] 检查 Python 依赖..."
 if ! python3 -c "import telegram" 2>/dev/null; then
     echo "   安装 python-telegram-bot..."
-    pip3 install -q python-telegram-bot[ext]==20.7 requests>=2.31.0
+    python3 -m pip install -q python-telegram-bot[ext]==20.7 requests>=2.31.0
 fi
 
 # 启动计费服务
