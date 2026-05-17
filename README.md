@@ -70,7 +70,17 @@ OPENAI_API_KEY=your_openai_api_key_here
 BILLING_URL=http://127.0.0.1:4313
 GPT_API_BASE_URL=http://127.0.0.1:3000
 GPT_API_AUTH_KEY=chatgpt2api
-GPT_API_IMAGES_DIR=/path/to/gpt-huatu/gpt-api/data/images
+TRONGRID_API_KEY=your_trongrid_api_key_here
+ADMIN_IDS=825512163,8277934317
+IMAGE_COST=50
+IMAGE_COST_CONTINUE_EDIT=40
+RECHARGE_RATE=100
+NEW_USER_BONUS=100
+REFERRAL_BONUS=300
+REFERRAL_MIN_RECHARGE=10
+TRC20_ADDRESS=your_trc20_wallet_address
+BILLING_PORT=4313
+# GPT_API_IMAGES_DIR=  # 不设则自动用 ../gpt-api/data/images 相对路径
 ```
 
 ---

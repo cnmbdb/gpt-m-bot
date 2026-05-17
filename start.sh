@@ -73,14 +73,14 @@ echo "[3/3] 启动服务..."
 echo "------------------------------------------"
 
 cd "$SCRIPT_DIR/billing-service"
-node server.js &
+BILLING_PORT="${BILLING_PORT:-4313}" TRC20_ADDRESS="$TRC20_ADDRESS" ADMIN_IDS="$ADMIN_IDS" TRONGRID_API_KEY="$TRONGRID_API_KEY" TELEGRAM_BOT_TOKEN="$TELEGRAM_BOT_TOKEN" RECHARGE_RATE="$RECHARGE_RATE" IMAGE_COST="$IMAGE_COST" NEW_USER_BONUS="$NEW_USER_BONUS" REFERRAL_BONUS="$REFERRAL_BONUS" REFERRAL_MIN_RECHARGE="$REFERRAL_MIN_RECHARGE" node server.js &
 BILLING_PID=$!
-echo "   ✅ 计费服务已启动 (PID: $BILLING_PID, 端口: 4313)"
+echo "   ✅ 计费服务已启动 (PID: $BILLING_PID, 端口: ${BILLING_PORT:-4313})"
 
 sleep 2
 
-if ! curl -s http://127.0.0.1:4313/health > /dev/null 2>&1; then
-    echo "   ❌ 计费服务启动失败，请检查端口 4313 是否被占用"
+if ! curl -s "http://127.0.0.1:${BILLING_PORT:-4313}/health" > /dev/null 2>&1; then
+    echo "   ❌ 计费服务启动失败，请检查端口 ${BILLING_PORT:-4313} 是否被占用"
     kill $BILLING_PID 2>/dev/null || true
     exit 1
 fi
@@ -116,7 +116,7 @@ check_bot() {
 
 # Billing Service
 check_billing() {
-    curl -s -o /dev/null -w "%{http_code}" http://127.0.0.1:4313/health 2>/dev/null | grep -q "200"
+    curl -s -o /dev/null -w "%{http_code}" "http://127.0.0.1:${BILLING_PORT:-4313}/health" 2>/dev/null | grep -q "200"
 }
 
 # Docker GPT API
@@ -126,7 +126,7 @@ check_docker() {
 
 # TRON API
 check_tron() {
-    curl -s -o /dev/null -w "%{http_code}" "https://api.trongrid.io/v1/accounts/TWD2GwSeLt7mRdDc3DPUfDU4B7cy81MsbM" 2>/dev/null | grep -q "200"
+    curl -s -o /dev/null -w "%{http_code}" "https://api.trongrid.io/v1/accounts/${TRC20_ADDRESS}" 2>/dev/null | grep -q "200"
 }
 
 all_ok=true
@@ -135,7 +135,7 @@ echo "📡 Telegram Bot:"
 check_service "Telegram Bot" check_bot || all_ok=false
 
 echo "💰 Billing Service:"
-check_service "Billing Service (4313)" check_billing || all_ok=false
+check_service "Billing Service (${BILLING_PORT:-4313})" check_billing || all_ok=false
 
 echo "🖼️ GPT API Proxy (Docker):"
 if check_service "GPT API Docker" check_docker; then
@@ -154,7 +154,7 @@ else
     echo "⚠️ 部分服务异常，请检查"
 fi
 echo ""
-echo "   计费服务: http://127.0.0.1:4313"
+echo "   计费服务: http://127.0.0.1:${BILLING_PORT:-4313}"
 echo "   Telegram: 运行中"
 echo ""
 echo "   停止服务: ./stop.sh"

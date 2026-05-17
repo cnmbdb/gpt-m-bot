@@ -72,10 +72,10 @@ async def cmd_zs(update: Update, context: ContextTypes.DEFAULT_TYPE):
                 "`/zs +100` — 给被回复用户加100积分\n"
                 "`/zs -50` — 扣除被回复用户50积分\n\n"
                 "**方式二**：直接指定用户\n"
-                "`/zs 825512163 +100` — 给用户加100积分\n"
-                "`/zs 825512163 -50` — 扣除用户50积分\n\n"
+                "`/zs <user_id> +100` — 给用户加100积分\n"
+                "`/zs <user_id> -50` — 扣除用户50积分\n\n"
                 "支持一次操作多个：\n"
-                "`/zs 825512163 +100 8277934317 -50`")
+                "`/zs <user_id1> +100 <user_id2> -50`")
             return
 
         target_id = str(args[0])
@@ -643,45 +643,37 @@ async def cmd_me(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 async def cmd_help(update: Update, context: ContextTypes.DEFAULT_TYPE):
     chat_id = update.effective_chat.id
-    text = """� **使用帮助**
-
-━━━━━━━━━━━━━━━━━━━━━━
-
-🎨 **AI 生图**
-点击底部「🎨 AI 生图」按钮
-→ 选择「🎨 生成图片」输入描述生成
-→ 或选择「✏️ 修改图片」发送图片+描述修改
-
-💰 **充值方式**
-USDT TRC20 充值
-地址: `TWD2GwSeLt7mRdDc3DPUfDU4B7cy81MsbM`
-比例: 1 USDT = 100 积分
-
-💳 **收费标准**
-• 首次生成图片: 50 积分/张
-• 首次修改图片: 50 积分/张
-• 继续修改: 40 积分/次
-• 新用户赠送: 100 积分
-
-👤 **个人中心**
-查看余额和交易记录
-
-💡 **快捷命令**
-`/sc` — 生成图片
-`/gt` — 修改图片
-`/recharge` — 充值
-`/me` — 余额查询
-
-━━━━━━━━━━━━━━━━━━━━━━
-
-📞 **联系管理员**
-如有问题或建议，请联系管理员
-
-💡 **使用技巧**
-• 生成图片后，点击「✏️ 继续修改图片」按钮可进行多轮修改
-• 每次修改仅需 40 积分，比重新生成更划算
-• 图片生成后可无限次继续修改
-"""
+    text = (
+        f"🔧 **使用帮助**\n\n"
+        f"━━━━━━━━━━━━━━━━━━━━━━\n\n"
+        f"🎨 **AI 生图**\n"
+        f"点击底部「🎨 AI 生图」按钮\n"
+        f"→ 选择「🎨 生成图片」输入描述生成\n"
+        f"→ 或选择「✏️ 修改图片」发送图片+描述修改\n\n"
+        f"💰 **充值方式**\n"
+        f"USDT TRC20 充值\n"
+        f"地址: `{config.TRC20_ADDRESS}`\n"
+        f"比例: 1 USDT = {config.RECHARGE_RATE} 积分\n\n"
+        f"💳 **收费标准**\n"
+        f"• 首次生成图片: {config.IMAGE_COST} 积分/张\n"
+        f"• 首次修改图片: {config.IMAGE_COST} 积分/张\n"
+        f"• 继续修改: {config.IMAGE_COST_CONTINUE_EDIT} 积分/次\n"
+        f"• 新用户赠送: {config.NEW_USER_BONUS} 积分\n\n"
+        f"👤 **个人中心**\n"
+        f"查看余额和交易记录\n\n"
+        f"💡 **快捷命令**\n"
+        f"`/sc` — 生成图片\n"
+        f"`/gt` — 修改图片\n"
+        f"`/recharge` — 充值\n"
+        f"`/me` — 余额查询\n\n"
+        f"━━━━━━━━━━━━━━━━━━━━━━\n\n"
+        f"📞 **联系管理员**\n"
+        f"如有问题或建议，请联系管理员\n\n"
+        f"💡 **使用技巧**\n"
+        f"• 生成图片后，点击「✏️ 继续修改图片」按钮可进行多轮修改\n"
+        f"• 每次修改仅需 {config.IMAGE_COST_CONTINUE_EDIT} 积分，比重新生成更划算\n"
+        f"• 图片生成后可无限次继续修改\n"
+    )
     await send_message(chat_id, text, main_menu_keyboard(), "Markdown")
 
 
@@ -865,7 +857,7 @@ async def cmd_image_continue_edit(update: Update, context: ContextTypes.DEFAULT_
     chat_id = update.effective_chat.id
     model_info = config.IMAGE_MODELS.get(model, config.IMAGE_MODELS[config.DEFAULT_IMAGE_MODEL])
     model_name = model_info["name"]
-    cost = 40
+    cost = config.IMAGE_COST_CONTINUE_EDIT
 
     await send_message(chat_id, f"✏️ 正在用 {model_name} 继续修改图片，消耗 {cost} 积分...")
 

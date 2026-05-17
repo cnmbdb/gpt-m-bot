@@ -3,7 +3,8 @@ const fs = require('fs');
 const path = require('path');
 
 const DATA_FILE = path.join(__dirname, 'data', 'billing.json');
-const ADMIN_IDS = (process.env.ADMIN_IDS || '825512163,8277934317').split(',').map(s => s.trim());
+const ADMIN_IDS = (process.env.ADMIN_IDS || '').split(',').map(s => s.trim()).filter(Boolean);
+const IMAGE_COST = parseInt(process.env.IMAGE_COST || '50', 10);
 
 function loadData() {
   try {
@@ -29,13 +30,13 @@ const data = loadData();
 const user = data.users[userId];
 
 // New user or zero balance -> not allowed (must claim bonus first)
-if (!user || user.balance < 50) {
+if (!user || user.balance < IMAGE_COST) {
   console.log(JSON.stringify({ allowed: false, reason: 'daily_limit', balance: user ? user.balance : 0 }));
   process.exit(0);
 }
 
 // Balance check: must have at least 50 credits for image generation
-if (user.balance < 50) {
+if (user.balance < IMAGE_COST) {
   console.log(JSON.stringify({ allowed: false, reason: 'daily_limit', balance: user.balance }));
   process.exit(0);
 }

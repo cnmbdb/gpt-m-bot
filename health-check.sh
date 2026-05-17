@@ -2,6 +2,16 @@
 
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 
+ENV_FILE="$SCRIPT_DIR/.env"
+if [[ -f "$ENV_FILE" ]]; then
+    set -a
+    source "$ENV_FILE"
+    set +a
+fi
+
+BILLING_PORT="${BILLING_PORT:-4313}"
+TRC20_ADDRESS="${TRC20_ADDRESS:-TWD2GwSeLt7mRdDc3DPUfDU4B7cy81MsbM}"
+
 echo "=========================================="
 echo "      项目健康检查"
 echo "=========================================="
@@ -20,7 +30,7 @@ else
 fi
 echo ""
 
-echo "💰 2. Billing Service (端口 4313)"
+echo "💰 2. Billing Service (端口 ${BILLING_PORT})"
 echo "------------------------------------------"
 BILLING_PID=$(ps aux | grep "node.*server.js" | grep -v grep | grep -v Trae | awk '{print $2}' | head -1)
 if [ -n "$BILLING_PID" ]; then
@@ -30,10 +40,10 @@ else
     all_ok=false
 fi
 
-BILLING_HEALTH=$(curl -s -o /dev/null -w "%{http_code}" http://127.0.0.1:4313/health 2>/dev/null)
+BILLING_HEALTH=$(curl -s -o /dev/null -w "%{http_code}" http://127.0.0.1:${BILLING_PORT}/health 2>/dev/null)
 if [ "$BILLING_HEALTH" = "200" ]; then
     echo "   ✅ API 响应正常"
-    BILLING_BALANCE=$(curl -s http://127.0.0.1:4313/health 2>/dev/null | grep -o '"status":"ok"' || echo "")
+    BILLING_BALANCE=$(curl -s http://127.0.0.1:${BILLING_PORT}/health 2>/dev/null | grep -o '"status":"ok"' || echo "")
     if [ -n "$BILLING_BALANCE" ]; then
         echo "   ✅ 健康检查通过"
     fi
@@ -63,7 +73,7 @@ echo ""
 
 echo "🔗 4. TRON API 连通性"
 echo "------------------------------------------"
-TRON_CHECK=$(curl -s -o /dev/null -w "%{http_code}" "https://api.trongrid.io/v1/accounts/TWD2GwSeLt7mRdDc3DPUfDU4B7cy81MsbM" 2>/dev/null)
+TRON_CHECK=$(curl -s -o /dev/null -w "%{http_code}" "https://api.trongrid.io/v1/accounts/${TRC20_ADDRESS}" 2>/dev/null)
 if [ "$TRON_CHECK" = "200" ]; then
     echo "   ✅ Trongrid API 可达"
 else
@@ -79,7 +89,7 @@ if [ -f "$BILLING_FILE" ]; then
     echo "   👥 用户数: $USER_COUNT"
 fi
 
-ORDER_COUNT=$(curl -s http://127.0.0.1:4313/pending-orders 2>/dev/null | grep -o '"orderId"' | wc -l || echo "0")
+ORDER_COUNT=$(curl -s http://127.0.0.1:${BILLING_PORT}/pending-orders 2>/dev/null | grep -o '"orderId"' | wc -l || echo "0")
 echo "   📋 待处理订单: $ORDER_COUNT"
 echo ""
 
