@@ -4,6 +4,20 @@ const http = require('http');
 const fs = require('fs');
 const path = require('path');
 
+const envFile = path.join(__dirname, '..', '.env');
+if (fs.existsSync(envFile)) {
+  const envContent = fs.readFileSync(envFile, 'utf8');
+  for (const line of envContent.split('\n')) {
+    const trimmed = line.trim();
+    if (trimmed && !trimmed.startsWith('#') && trimmed.includes('=')) {
+      const [key, ...valueParts] = trimmed.split('=');
+      if (key && !process.env[key]) {
+        process.env[key] = valueParts.join('=').trim();
+      }
+    }
+  }
+}
+
 const app = express();
 app.use(express.json());
 
