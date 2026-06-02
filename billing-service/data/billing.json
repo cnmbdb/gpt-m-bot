@@ -2,7 +2,7 @@
   "users": {
     "825512163": {
       "id": "825512163",
-      "balance": 99760,
+      "balance": 99710,
       "bonusClaimed": true,
       "createdAt": 1777369752478,
       "dailyCount": 0,
@@ -14,7 +14,7 @@
       "bonusClaimed": true,
       "createdAt": 1777369829282,
       "dailyCount": 0,
-      "lastActiveDate": "Tue May 05 2026"
+      "lastActiveDate": "Tue Jun 02 2026"
     },
     "7515427815": {
       "id": "7515427815",

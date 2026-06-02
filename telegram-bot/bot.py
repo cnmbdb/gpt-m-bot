@@ -98,7 +98,7 @@ def main():
         .build()
     )
     
-    app.bot.request.timeout = 60
+    app.bot.request.timeout = 180
 
     app.add_handler(CommandHandler("start", start_cmd))
     app.add_handler(CommandHandler("recharge", recharge_cmd))

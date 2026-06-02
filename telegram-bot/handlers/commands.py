@@ -26,6 +26,27 @@ active_polls: dict[tuple, dict] = {}
 pending_albums: dict[str, dict] = {}
 ALBUM_COLLECT_DELAY = 0.5  # seconds to wait for album photos
 
+_chat_locks: dict[int, asyncio.Lock] = {}
+
+def get_chat_lock(chat_id: int) -> asyncio.Lock:
+    if chat_id not in _chat_locks:
+        _chat_locks[chat_id] = asyncio.Lock()
+    return _chat_locks[chat_id]
+
+
+def mark_processing(chat_id: int) -> bool:
+    """Atomically mark chat_id as 'processing'. Returns True if acquired, False if already processing."""
+    current = user_states.get(chat_id, {})
+    if current.get("step") == "processing":
+        return False
+    user_states[chat_id] = {**current, "step": "processing"}
+    return True
+
+
+def mark_idle(chat_id: int) -> None:
+    """Reset chat state to 'idle' (preserves other fields)."""
+    user_states[chat_id] = {**user_states.get(chat_id, {}), "step": "idle"}
+
 POLL_INTERVAL = 5
 ORDER_TIMEOUT = 15 * 60
 
@@ -385,6 +406,10 @@ async def _process_single_or_album(chat_id: int, user_id: str, photo_bytes_list:
     """Process photo(s) with caption as edit or generation request."""
     # Handle multiple photos as generation from reference images
     is_album = len(photo_bytes_list) > 1
+
+    current_state = user_states.get(chat_id, {})
+    if current_state.get("step") == "processing":
+        return
 
     if chat_id not in user_states:
         if not caption.strip():
@@ -795,6 +820,10 @@ async def cmd_image_gen_sc_with_ref(update: Update, context: ContextTypes.DEFAUL
     cost = model_info["cost"]
     model_name = model_info["name"]
 
+    if not mark_processing(chat_id):
+        await send_message(chat_id, "⏳ 正在处理中，请稍候再试...")
+        return
+
     await send_message(chat_id, f"🎨 正在用 {model_name} 参考图片生成，请稍候...")
 
     limits = _check_limits(user_id)
@@ -852,12 +881,18 @@ async def cmd_image_gen_sc_with_ref(update: Update, context: ContextTypes.DEFAUL
             )
         else:
             raise RuntimeError("无法获取图片数据")
+        mark_idle(chat_id)
     except Exception as e:
-        try:
-            billing.refund(user_id, cost, "generation_failed")
-        except Exception:
-            pass
-        await send_message(chat_id, f"❌ 图片生成失败: {e}\n积分已退回，请稍后重试。")
+        mark_idle(chat_id)
+        err_str = str(e)
+        if err_str == "Timed out":
+            await send_message(chat_id, "⚠️ Telegram 上传超时，但图片可能已生成。\n请稍后查看或重试（不会重复扣费）。")
+        else:
+            try:
+                billing.refund(user_id, cost, "generation_failed")
+            except Exception:
+                pass
+            await send_message(chat_id, f"❌ 图片生成失败: {e}\n积分已退回，请稍后重试。")
 
 
 async def cmd_image_continue_edit(update: Update, context: ContextTypes.DEFAULT_TYPE, instruction: str, image_data: bytes, model: str = None):
@@ -869,6 +904,10 @@ async def cmd_image_continue_edit(update: Update, context: ContextTypes.DEFAULT_
     model_info = config.IMAGE_MODELS.get(model, config.IMAGE_MODELS[config.DEFAULT_IMAGE_MODEL])
     model_name = model_info["name"]
     cost = config.IMAGE_COST_CONTINUE_EDIT
+
+    if not mark_processing(chat_id):
+        await send_message(chat_id, "⏳ 正在处理中，请稍候再试...")
+        return
 
     await send_message(chat_id, f"✏️ 正在用 {model_name} 继续修改图片，消耗 {cost} 积分...")
 
@@ -897,12 +936,18 @@ async def cmd_image_continue_edit(update: Update, context: ContextTypes.DEFAULT_
             caption=f"✅ {model_name} 继续修改完成！消耗 {cost} 积分\n\n💡 如需继续修改，点击下方按钮并发送修改指令（消耗 40 积分）",
             reply_markup=continue_edit_keyboard(),
         )
+        mark_idle(chat_id)
     except Exception as e:
-        try:
-            billing.refund(user_id, cost, "continue_edit_failed")
-        except Exception:
-            pass
-        await send_message(chat_id, f"❌ 修改失败: {e}\n积分已退回，请稍后重试。")
+        mark_idle(chat_id)
+        err_str = str(e)
+        if err_str == "Timed out":
+            await send_message(chat_id, "⚠️ Telegram 上传超时，但图片可能已生成。\n请稍后查看或重试（不会重复扣费）。")
+        else:
+            try:
+                billing.refund(user_id, cost, "continue_edit_failed")
+            except Exception:
+                pass
+            await send_message(chat_id, f"❌ 修改失败: {e}\n积分已退回，请稍后重试。")
 
 
 async def cmd_image_edit_gt(update: Update, context: ContextTypes.DEFAULT_TYPE, photo_files: list, instruction: str, model: str = None, explicit_user_id: str = None, explicit_chat_id: int = None):
@@ -913,6 +958,10 @@ async def cmd_image_edit_gt(update: Update, context: ContextTypes.DEFAULT_TYPE, 
     model_info = config.IMAGE_MODELS.get(model, config.IMAGE_MODELS[config.DEFAULT_IMAGE_MODEL])
     cost = model_info["cost"]
     model_name = model_info["name"]
+
+    if not mark_processing(chat_id):
+        await send_message(chat_id, "⏳ 正在处理中，请稍候再试...")
+        return
 
     await send_message(chat_id, f"✏️ 正在用 {model_name} 修改图片，请稍候...")
 
@@ -952,12 +1001,18 @@ async def cmd_image_edit_gt(update: Update, context: ContextTypes.DEFAULT_TYPE, 
             caption=f"✅ {model_name} 改图完成！消耗 {cost} 积分\n\n💡 如需继续修改，点击下方按钮并发送修改指令（消耗 40 积分）",
             reply_markup=continue_edit_keyboard(),
         )
+        mark_idle(chat_id)
     except Exception as e:
-        try:
-            billing.refund(user_id, cost, "edit_failed")
-        except Exception:
-            pass
-        await send_message(chat_id, f"❌ 改图失败: {e}\n积分已退回，请稍后重试。")
+        mark_idle(chat_id)
+        err_str = str(e)
+        if err_str == "Timed out":
+            await send_message(chat_id, "⚠️ Telegram 上传超时，但图片可能已生成。\n请稍后查看或重试（不会重复扣费）。")
+        else:
+            try:
+                billing.refund(user_id, cost, "edit_failed")
+            except Exception:
+                pass
+            await send_message(chat_id, f"❌ 改图失败: {e}\n积分已退回，请稍后重试。")
 
 
 async def cmd_image_gen_sc_direct(update: Update, context: ContextTypes.DEFAULT_TYPE):
