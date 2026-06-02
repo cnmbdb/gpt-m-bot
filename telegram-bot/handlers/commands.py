@@ -345,7 +345,12 @@ async def handle_photo_message(update: Update, context: ContextTypes.DEFAULT_TYP
         return
 
     # Single photo (no media_group_id) - process immediately
-    await _process_single_or_album(chat_id, user_id, photos, caption, context)
+    photo_bytes_list = []
+    for photo in photos:
+        photo_file = await photo.get_file()
+        photo_bytes = await photo_file.download_as_bytearray()
+        photo_bytes_list.append(bytes(photo_bytes))
+    await _process_single_or_album(chat_id, user_id, photo_bytes_list, caption, context)
 
 
 async def _process_album_after_delay(album_key: str):
@@ -820,15 +825,21 @@ async def cmd_image_gen_sc_with_ref(update: Update, context: ContextTypes.DEFAUL
             "last_image_url": img_url,
         }
 
-        if img_url and ("127.0.0.1" in img_url or "localhost" in img_url):
-            local_path = img_url.replace("http://127.0.0.1:3000/images/", config.GPT_API_IMAGES_DIR + "/")
-            if os.path.exists(local_path):
-                await context.bot.send_photo(
-                    chat_id=chat_id, photo=open(local_path, 'rb'),
-                    caption=f"✅ {model_name} 参考图片已生成！消耗 {cost} 积分\n\n💡 如需继续修改，点击下方按钮并发送修改指令（消耗 40 积分）",
-                    reply_markup=continue_edit_keyboard(),
-                )
-                return
+        from urllib.parse import urlparse
+        gpt_api_host = urlparse(config.GPT_API_BASE_URL).netloc
+        if img_url and (gpt_api_host in img_url or "localhost" in img_url):
+            try:
+                parsed = urlparse(img_url)
+                local_path = os.path.join(config.GPT_API_IMAGES_DIR, parsed.path.lstrip("/images/").lstrip("/"))
+                if os.path.exists(local_path):
+                    await context.bot.send_photo(
+                        chat_id=chat_id, photo=open(local_path, 'rb'),
+                        caption=f"✅ {model_name} 参考图片已生成！消耗 {cost} 积分\n\n💡 如需继续修改，点击下方按钮并发送修改指令（消耗 40 积分）",
+                        reply_markup=continue_edit_keyboard(),
+                    )
+                    return
+            except Exception:
+                pass
 
         if img_data:
             from io import BytesIO

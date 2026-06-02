@@ -18,7 +18,15 @@ REFERRAL_BONUS = int(os.getenv("REFERRAL_BONUS", "300"))
 REFERRAL_MIN_RECHARGE = int(os.getenv("REFERRAL_MIN_RECHARGE", "10"))
 DEFAULT_IMAGE_MODEL = "gpt-m2"
 
-GPT_API_BASE_URL = os.getenv("GPT_API_BASE_URL", "http://127.0.0.1:3000")
+GPT_API_BASE_URL_RAW = os.getenv("GPT_API_BASE_URL", "").strip()
+if not GPT_API_BASE_URL_RAW:
+    raise RuntimeError(
+        "\n❌ 启动失败: GPT_API_BASE_URL 未配置!\n"
+        "请在 .env 文件中设置 GPT_API_BASE_URL 环境变量。\n"
+        "示例 (本地): GPT_API_BASE_URL=http://127.0.0.1:3000\n"
+        "示例 (远程): GPT_API_BASE_URL=https://paipai-huatu-api.txsw.top\n"
+    )
+GPT_API_BASE_URL = GPT_API_BASE_URL_RAW.rstrip("/")
 GPT_API_AUTH_KEY = os.getenv("GPT_API_AUTH_KEY", "chatgpt2api")
 _default_images_dir = os.path.join(os.path.dirname(__file__), "..", "gpt-api", "data", "images")
 GPT_API_IMAGES_DIR = os.getenv("GPT_API_IMAGES_DIR", _default_images_dir)

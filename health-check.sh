@@ -63,7 +63,7 @@ else
     all_ok=false
 fi
 
-GPT_HEALTH=$(curl -s -o /dev/null -w "%{http_code}" http://127.0.0.1:3000/v1/models 2>/dev/null)
+GPT_HEALTH=$(curl -s -o /dev/null -w "%{http_code}" "${GPT_API_BASE_URL:-http://127.0.0.1:3000}/v1/models" 2>/dev/null)
 if [ "$GPT_HEALTH" = "401" ] || [ "$GPT_HEALTH" = "200" ]; then
     echo "   ✅ API 响应正常 (HTTP $GPT_HEALTH)"
 else

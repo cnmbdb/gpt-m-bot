@@ -207,7 +207,9 @@ class ImageService:
         if b64:
             return base64.b64decode(b64), url
         elif url:
-            return b"", url
+            img_resp = requests.get(url, timeout=120)
+            img_resp.raise_for_status()
+            return img_resp.content, url
 
         raise RuntimeError("No image data (b64_json or url) in response")
 
