@@ -1,4 +1,6 @@
 #!/bin/bash
+launchctl remove gpt-huatu.telegram-bot 2>/dev/null || true
+
 if [[ -f "$(dirname "$0")/.pids" ]]; then
     echo "正在停止服务..."
     IFS=' ' read -r B_PID T_PID < "$(dirname "$0")/.pids"

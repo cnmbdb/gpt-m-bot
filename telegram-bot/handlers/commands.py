@@ -1,11 +1,13 @@
 import re
 import json
 import asyncio
+import logging
 import subprocess
 import threading
 import time
 import os
 from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup, ReplyKeyboardMarkup, KeyboardButton
+from telegram.error import NetworkError, TimedOut
 from telegram.ext import ContextTypes
 
 import config
@@ -13,9 +15,15 @@ import services.billing as billing_svc
 import services.language as lang_svc
 import services.image as image_svc
 
+logger = logging.getLogger(__name__)
+
+MESSAGE_MAX_ATTEMPTS = 3
+MESSAGE_RETRY_BASE_DELAY = 1  # seconds; 第 N 次重试等待 (N+1) * BASE_DELAY 秒
+
 billing = billing_svc.BillingService()
 lang_service = lang_svc.LanguageService()
 image_service = image_svc.ImageService()
+telegram_bot = None
 
 # In-memory state for multi-step flows
 user_states: dict[int, dict] = {}
@@ -53,6 +61,11 @@ ORDER_TIMEOUT = 15 * 60
 
 def is_admin(user_id: int) -> bool:
     return user_id in config.ADMIN_IDS
+
+
+def configure_bot(bot) -> None:
+    global telegram_bot
+    telegram_bot = bot
 
 
 async def cmd_zs(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -128,24 +141,57 @@ async def cmd_zs(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 
 async def send_message(chat_id: int, text: str, reply_markup=None, parse_mode="Markdown"):
-    from telegram import Bot
-    bot = Bot(token=config.BOT_TOKEN)
-    await bot.send_message(
-        chat_id=chat_id, text=text,
-        reply_markup=reply_markup, parse_mode=parse_mode,
-    )
+    if telegram_bot is None:
+        raise RuntimeError("Telegram bot client is not initialized")
+    for attempt in range(MESSAGE_MAX_ATTEMPTS):
+        try:
+            return await telegram_bot.send_message(
+                chat_id=chat_id, text=text,
+                reply_markup=reply_markup, parse_mode=parse_mode,
+            )
+        except (NetworkError, TimedOut) as e:
+            if attempt == MESSAGE_MAX_ATTEMPTS - 1:
+                logger.error(
+                    "[send_message] 最终失败 chat_id=%s 尝试=%d 原因=%s",
+                    chat_id, attempt + 1, type(e).__name__,
+                )
+                raise
+            delay = MESSAGE_RETRY_BASE_DELAY * (attempt + 1)
+            logger.warning(
+                "[send_message] 重试 chat_id=%s 第%d次 原因=%s delay=%ds",
+                chat_id, attempt + 1, type(e).__name__, delay,
+            )
+            await asyncio.sleep(delay)
 
 
 async def edit_message(chat_id: int, message_id: int, text: str, reply_markup=None, parse_mode="Markdown"):
-    from telegram import Bot
-    bot = Bot(token=config.BOT_TOKEN)
-    try:
-        await bot.edit_message_text(
-            chat_id=chat_id, message_id=message_id,
-            text=text, reply_markup=reply_markup, parse_mode=parse_mode,
-        )
-    except Exception:
-        pass
+    if telegram_bot is None:
+        return
+    for attempt in range(MESSAGE_MAX_ATTEMPTS):
+        try:
+            return await telegram_bot.edit_message_text(
+                chat_id=chat_id, message_id=message_id,
+                text=text, reply_markup=reply_markup, parse_mode=parse_mode,
+            )
+        except (NetworkError, TimedOut) as e:
+            if attempt == MESSAGE_MAX_ATTEMPTS - 1:
+                logger.error(
+                    "[edit_message] 最终失败 chat_id=%s msg_id=%s 尝试=%d 原因=%s",
+                    chat_id, message_id, attempt + 1, type(e).__name__,
+                )
+                return
+            delay = MESSAGE_RETRY_BASE_DELAY * (attempt + 1)
+            logger.warning(
+                "[edit_message] 重试 chat_id=%s msg_id=%s 第%d次 原因=%s delay=%ds",
+                chat_id, message_id, attempt + 1, type(e).__name__, delay,
+            )
+            await asyncio.sleep(delay)
+        except Exception as e:
+            logger.warning(
+                "[edit_message] 非网络错误 chat_id=%s msg_id=%s err=%s",
+                chat_id, message_id, e,
+            )
+            return
 
 
 def lang_keyboard():
@@ -345,7 +391,7 @@ async def handle_photo_message(update: Update, context: ContextTypes.DEFAULT_TYP
         if album is None:
             # First photo in album - start collecting
             pending_albums[album_key] = {
-                "photos": list(photos),
+                "photos": [photos[-1]],
                 "caption": caption,
                 "user_id": update.effective_user.id,
                 "message_id": message.message_id,
@@ -360,17 +406,15 @@ async def handle_photo_message(update: Update, context: ContextTypes.DEFAULT_TYP
 
         if not album["processed"]:
             # Add to existing album
-            album["photos"].extend(photos)
+            album["photos"].append(photos[-1])
             if caption:
                 album["caption"] = caption
         return
 
     # Single photo (no media_group_id) - process immediately
-    photo_bytes_list = []
-    for photo in photos:
-        photo_file = await photo.get_file()
-        photo_bytes = await photo_file.download_as_bytearray()
-        photo_bytes_list.append(bytes(photo_bytes))
+    photo_file = await photos[-1].get_file()
+    photo_bytes = await photo_file.download_as_bytearray()
+    photo_bytes_list = [bytes(photo_bytes)]
     await _process_single_or_album(chat_id, user_id, photo_bytes_list, caption, context)
 
 
@@ -383,23 +427,29 @@ async def _process_album_after_delay(album_key: str):
         return
 
     album["processed"] = True
-    photos = album["photos"]
-    caption = album["caption"]
-    user_id = str(album["user_id"])
     chat_id = album["chat_id"]
-    context = album["context"]
-
-    # Download all photos
-    photo_bytes_list = []
-    for photo in photos:
-        photo_file = await photo.get_file()
-        photo_bytes = await photo_file.download_as_bytearray()
-        photo_bytes_list.append(bytes(photo_bytes))
-
-    # Clean up
-    del pending_albums[album_key]
-
-    await _process_single_or_album(chat_id, user_id, photo_bytes_list, caption, context)
+    try:
+        photo_bytes_list = []
+        for photo in album["photos"]:
+            photo_file = await photo.get_file()
+            photo_bytes = await photo_file.download_as_bytearray()
+            photo_bytes_list.append(bytes(photo_bytes))
+        await _process_single_or_album(
+            chat_id,
+            str(album["user_id"]),
+            photo_bytes_list,
+            album["caption"],
+            album["context"],
+        )
+    except Exception:
+        import traceback
+        traceback.print_exc()
+        try:
+            await send_message(chat_id, "❌ 图片处理失败，请稍后重试。")
+        except Exception:
+            pass
+    finally:
+        pending_albums.pop(album_key, None)
 
 
 async def _process_single_or_album(chat_id: int, user_id: str, photo_bytes_list: list, caption: str, context: ContextTypes.DEFAULT_TYPE):
@@ -783,7 +833,7 @@ async def cmd_image_gen_sc(update: Update, context: ContextTypes.DEFAULT_TYPE, p
         return
 
     try:
-        img_data = image_service.generate_direct(prompt, model=model)
+        img_data = await asyncio.to_thread(image_service.generate_direct, prompt, model=model)
         from io import BytesIO
         bio = BytesIO(img_data)
         bio.name = "generated_image.png"
@@ -844,7 +894,12 @@ async def cmd_image_gen_sc_with_ref(update: Update, context: ContextTypes.DEFAUL
         return
 
     try:
-        img_data, img_url = image_service.generate_with_image(prompt, ref_images, model=model)
+        img_data, img_url = await asyncio.to_thread(
+            image_service.generate_with_image,
+            prompt,
+            ref_images,
+            model=model,
+        )
 
         user_states[chat_id] = {
             "step": "idle",
@@ -918,7 +973,7 @@ async def cmd_image_continue_edit(update: Update, context: ContextTypes.DEFAULT_
         return
 
     try:
-        img_data = image_service.edit_image(image_data, instruction, model=model)
+        img_data = await asyncio.to_thread(image_service.edit_image, image_data, instruction, model=model)
         from io import BytesIO
         bio = BytesIO(img_data)
         bio.name = "continue_edited.png"
@@ -983,7 +1038,7 @@ async def cmd_image_edit_gt(update: Update, context: ContextTypes.DEFAULT_TYPE, 
         return
 
     try:
-        img_data = image_service.edit_image(photo_files, instruction, model=model)
+        img_data = await asyncio.to_thread(image_service.edit_image, photo_files, instruction, model=model)
         from io import BytesIO
         bio = BytesIO(img_data)
         bio.name = "edited_image.png"
@@ -1076,7 +1131,7 @@ async def cmd_image_gen(update: Update, context: ContextTypes.DEFAULT_TYPE, prom
         return
 
     try:
-        img_data = image_service.generate_direct(prompt, model=model)
+        img_data = await asyncio.to_thread(image_service.generate_direct, prompt, model=model)
         from io import BytesIO
         bio = BytesIO(img_data)
         bio.name = "generated_image.png"

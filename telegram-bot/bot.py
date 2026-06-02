@@ -1,7 +1,9 @@
 #!/usr/bin/env python3
 import os
 import logging
+import httpx
 from telegram import Update
+from telegram.request import HTTPXRequest
 from telegram.ext import (
     Application, CommandHandler, MessageHandler,
     CallbackQueryHandler, filters, ContextTypes,
@@ -24,12 +26,21 @@ logging.basicConfig(
     format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
     level=logging.INFO,
 )
+logging.getLogger("httpx").setLevel(logging.WARNING)
 logger = logging.getLogger(__name__)
+
+
+class DirectHTTPXRequest(HTTPXRequest):
+    """Keep Telegram traffic independent from the macOS system proxy."""
+
+    def _build_client(self) -> httpx.AsyncClient:
+        return httpx.AsyncClient(trust_env=False, **self._client_kwargs)
 
 
 async def post_init(app: Application):
     """Set up bot command menu and menu button."""
     from telegram import BotCommand
+    commands.configure_bot(app.bot)
     await app.bot.set_my_commands([
         BotCommand("start", "开始使用 / 重新打开菜单"),
         BotCommand("recharge", "充值余额"),
@@ -84,21 +95,25 @@ async def callback_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await commands.handle_lang_callback(update, context)
 
 
+async def error_handler(update: object, context: ContextTypes.DEFAULT_TYPE):
+    logger.error("Unhandled Telegram update error", exc_info=context.error)
+
+
 def main():
     if not config.BOT_TOKEN:
         logger.error("TELEGRAM_BOT_TOKEN not set! Please set it in .env file.")
         return
 
+    request = DirectHTTPXRequest(connection_pool_size=10, read_timeout=60, connect_timeout=10)
+    get_updates_request = DirectHTTPXRequest(connection_pool_size=2, read_timeout=60, connect_timeout=10)
     app = (
         Application.builder()
         .token(config.BOT_TOKEN)
-        .connection_pool_size(10)
-        .http_version("1.1")
+        .request(request)
+        .get_updates_request(get_updates_request)
         .post_init(post_init)
         .build()
     )
-    
-    app.bot.request.timeout = 180
 
     app.add_handler(CommandHandler("start", start_cmd))
     app.add_handler(CommandHandler("recharge", recharge_cmd))
@@ -116,6 +131,7 @@ def main():
         filters.TEXT & ~filters.COMMAND,
         commands.handle_message
     ))
+    app.add_error_handler(error_handler)
 
     logger.info("Bot starting...")
     app.run_polling(allowed_updates=Update.ALL_TYPES)
