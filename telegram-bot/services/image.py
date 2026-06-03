@@ -294,8 +294,6 @@ class ImageService:
             field_name = "image" if i == 0 else "image[]"
             files.append((field_name, (f"image{i+1}.png", img_bytes, "image/png")))
 
-        print(f"[DEBUG] _edit_local: {base_url}/v1/images/edits, 图片数: {len(image_bytes_list)}")
-
         response = requests.post(
             f"{base_url}/v1/images/edits",
             headers={"Authorization": f"Bearer {auth_key}"},
@@ -304,8 +302,6 @@ class ImageService:
             timeout=600,
         )
 
-        print(f"[DEBUG] _edit_local 响应状态: {response.status_code}")
-
         if response.status_code != 200:
             raise RuntimeError(f"Local edit error {response.status_code}: {response.text[:200]}")
 
@@ -313,21 +309,25 @@ class ImageService:
         if "error" in data:
             raise RuntimeError(data["error"].get("message", str(data["error"])))
 
-        url = data["data"][0].get("url")
-        print(f"[DEBUG] _edit_local url: {url}")
+        # 优先尝试读取本地文件（同机部署时优化性能）
+        url = data["data"][0].get("url", "")
+        b64 = data["data"][0].get("b64_json", "")
 
-        if url:
-            local_path = url.replace(f"{base_url}/images/", f"{config.GPT_API_IMAGES_DIR}/")
-            img_file = local_path
-            if os.path.exists(img_file):
-                print(f"[DEBUG] _edit_local 本地读取: {img_file}")
-                return open(img_file, "rb").read()
-            raise RuntimeError(f"图片文件不存在: {img_file}")
-
-        b64 = data["data"][0].get("b64_json")
-        print(f"[DEBUG] _edit_local b64_json: {bool(b64)}")
         if b64:
             return base64.b64decode(b64)
+
+        if url:
+            # 1) 尝试本地路径（同机时直接读盘，零网络开销）
+            try:
+                local_path = url.replace(f"{base_url}/images/", f"{config.GPT_API_IMAGES_DIR}/")
+                if os.path.exists(local_path):
+                    return open(local_path, "rb").read()
+            except Exception:
+                pass
+            # 2) 远程部署时直接从 URL 下载
+            img_resp = requests.get(url, timeout=120)
+            img_resp.raise_for_status()
+            return img_resp.content
 
         raise RuntimeError("No image data in response")
 
