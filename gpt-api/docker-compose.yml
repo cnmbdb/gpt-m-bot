@@ -11,6 +11,8 @@ services:
     environment:
       # 存储后端配置 (可选值: json, sqlite, postgres, git)
        - STORAGE_BACKEND=json
+       - UV_DEFAULT_INDEX=https://pypi.org/simple
+       - PIP_INDEX_URL=https://pypi.org/simple
       
       # 数据库配置 (当 STORAGE_BACKEND=sqlite/postgres 时使用)
       # - DATABASE_URL=postgresql://user:password@host:5432/dbname

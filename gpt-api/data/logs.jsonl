@@ -261,3 +261,6 @@
 {"time":"2026-05-05 00:26:59","type":"call","summary":"图生图调用完成","detail":{"key_id":"admin","key_name":"管理员","role":"admin","endpoint":"/v1/images/edits","model":"gpt-image-2","started_at":"2026-05-05 00:26:08","ended_at":"2026-05-05 00:26:59","duration_ms":51443,"status":"success","urls":["http://127.0.0.1:3000/images/2026/05/05/1777940819_4b5594651d064d354810f49c3ea8defb.png"]}}
 {"time":"2026-05-07 10:36:52","type":"account","summary":"更新账号","detail":{"token":"token:f426215a2c","status":"正常"}}
 {"time":"2026-05-07 10:41:20","type":"account","summary":"更新账号","detail":{"token":"token:f426215a2c","status":"正常"}}
+{"id":"8b2c8507b8bf41e2bacc31bbe83be622","time":"2026-06-05 15:09:11","type":"account","summary":"暂缓标记异常账号","detail":{"source":"refresh_accounts","token":"token:f426215a2c","error":"token invalidated (/backend-api/me)"}}
+{"id":"5e60247beb9e4a8d93a959cecee33e95","time":"2026-06-05 15:09:12","type":"account","summary":"暂缓标记异常账号","detail":{"source":"refresh_accounts","token":"token:f426215a2c","error":"token invalidated (/backend-api/me)"}}
+{"id":"0d22067363f54460987eba61a065a32d","time":"2026-06-05 15:09:12","type":"account","summary":"暂缓标记异常账号","detail":{"source":"refresh_accounts","token":"token:f426215a2c","error":"token invalidated (/backend-api/me)"}}
