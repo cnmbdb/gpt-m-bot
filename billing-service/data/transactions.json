@@ -1,5 +1,29 @@
 [
   {
+    "id": "TX_1783426600250_2ikr",
+    "userId": "825512163",
+    "type": "deduct",
+    "amount": 50,
+    "reason": "image_generation_sc",
+    "createdAt": 1783426600250
+  },
+  {
+    "id": "TX_1783426336903_xj71",
+    "userId": "825512163",
+    "type": "deduct",
+    "amount": 50,
+    "reason": "image_generation_sc_ref",
+    "createdAt": 1783426336903
+  },
+  {
+    "id": "TX_1783426180902_e6ae",
+    "userId": "825512163",
+    "type": "refund",
+    "amount": 50,
+    "reason": "generation_failed",
+    "createdAt": 1783426180902
+  },
+  {
     "id": "TX_1783426060001_v6g2",
     "userId": "825512163",
     "type": "deduct",

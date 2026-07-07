@@ -1,4 +1,5 @@
 import base64
+import logging
 import os
 import re
 import tempfile
@@ -10,6 +11,8 @@ import requests
 from PIL import Image, UnidentifiedImageError
 
 import config
+
+logger = logging.getLogger(__name__)
 
 
 class ImageService:
@@ -42,6 +45,7 @@ class ImageService:
 
     def generate_with_image(self, prompt: str, ref_images: list, model: str = "gpt-m2") -> tuple[bytes, str]:
         model_info = self._get_model_info(model)
+        logger.info("Image relay edit request: references=%d model=%s", len(ref_images), self._api_model(model_info))
         data = self._post_multipart(
             "/images/edits",
             {"prompt": prompt, "model": self._api_model(model_info), "response_format": "b64_json"},
@@ -52,6 +56,7 @@ class ImageService:
     def edit_image(self, image_sources, instruction: str, model: str = "gpt-m2") -> bytes:
         model_info = self._get_model_info(model)
         image_bytes_list = self._normalize_images(image_sources)
+        logger.info("Image relay edit request: images=%d model=%s", len(image_bytes_list), self._api_model(model_info))
         data = self._post_multipart(
             "/images/edits",
             {"prompt": instruction, "model": self._api_model(model_info), "response_format": "b64_json"},
@@ -103,8 +108,19 @@ class ImageService:
                     timeout=600,
                     **kwargs,
                 )
-            except (requests.ConnectionError, requests.ChunkedEncodingError) as e:
+            except (
+                requests.exceptions.ConnectionError,
+                requests.exceptions.ChunkedEncodingError,
+                requests.exceptions.RequestException,
+            ) as e:
                 last_error = e
+                logger.warning(
+                    "Image relay request failed attempt=%d/%d path=%s error=%r",
+                    attempt + 1,
+                    self.RETRY_ATTEMPTS,
+                    path,
+                    e,
+                )
                 if attempt == self.RETRY_ATTEMPTS - 1:
                     break
                 time.sleep(2 * (attempt + 1))
@@ -172,8 +188,7 @@ class ImageService:
     def _build_image_files(self, images: list[bytes], prefix: str) -> list[tuple[str, tuple[str, bytes, str]]]:
         files = []
         for i, img_bytes in enumerate(images):
-            field_name = "image" if i == 0 else "image[]"
-            files.append((field_name, (f"{prefix}{i + 1}.png", self._to_png(img_bytes), "image/png")))
+            files.append(("image", (f"{prefix}{i + 1}.png", self._to_png(img_bytes), "image/png")))
         return files
 
     def _to_png(self, img_bytes: bytes) -> bytes:
