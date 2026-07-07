@@ -66,9 +66,9 @@ fi
 # 安装 Python 依赖
 echo ""
 echo "[2/3] 检查 Python 依赖..."
-if ! python3 -c "import telegram" 2>/dev/null; then
-    echo "   安装 python-telegram-bot..."
-    python3 -m pip install -q python-telegram-bot[ext]==20.7 requests>=2.31.0
+if ! python3 -c "import telegram, PIL" 2>/dev/null; then
+    echo "   安装 Python 依赖..."
+    python3 -m pip install -q -r "$SCRIPT_DIR/telegram-bot/requirements.txt"
 fi
 
 # 启动计费服务

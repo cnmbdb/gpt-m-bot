@@ -1,17 +1,25 @@
 import base64
 import os
+import re
 import tempfile
+import time
+from io import BytesIO
 from typing import Any
 
 import requests
+from PIL import Image, UnidentifiedImageError
 
 import config
 
 
 class ImageService:
+    RETRY_ATTEMPTS = 3
+
     def __init__(self):
         self.output_dir = os.path.join(tempfile.gettempdir(), "codex-imagegen-service")
         os.makedirs(self.output_dir, exist_ok=True)
+        self.session = requests.Session()
+        self.session.trust_env = False
 
     def generate(self, prompt: str) -> tuple[str, str]:
         img_bytes = self.generate_direct(prompt)
@@ -36,7 +44,7 @@ class ImageService:
         model_info = self._get_model_info(model)
         data = self._post_multipart(
             "/images/edits",
-            {"prompt": prompt, "model": self._api_model(model_info), "n": "1", "response_format": "url"},
+            {"prompt": prompt, "model": self._api_model(model_info), "response_format": "b64_json"},
             self._build_image_files(ref_images, "reference"),
         )
         return self._extract_image_bytes_and_url(data)
@@ -46,7 +54,7 @@ class ImageService:
         image_bytes_list = self._normalize_images(image_sources)
         data = self._post_multipart(
             "/images/edits",
-            {"prompt": instruction, "model": self._api_model(model_info), "n": "1", "response_format": "b64_json"},
+            {"prompt": instruction, "model": self._api_model(model_info), "response_format": "b64_json"},
             self._build_image_files(image_bytes_list, "image"),
         )
         return self._extract_image_bytes(data)
@@ -67,23 +75,40 @@ class ImageService:
         return {"Authorization": f"Bearer {config.GPT_API_AUTH_KEY}"}
 
     def _post_json(self, path: str, payload: dict[str, Any]) -> dict:
-        response = requests.post(
-            f"{config.GPT_API_BASE_URL}{path}",
+        response = self._request(
+            "post",
+            path,
             headers={**self._headers(), "Content-Type": "application/json"},
             json=payload,
-            timeout=600,
         )
         return self._parse_response(response)
 
     def _post_multipart(self, path: str, data: dict[str, str], files: list[tuple[str, tuple[str, bytes, str]]]) -> dict:
-        response = requests.post(
-            f"{config.GPT_API_BASE_URL}{path}",
+        response = self._request(
+            "post",
+            path,
             headers=self._headers(),
             data=data,
             files=files,
-            timeout=600,
         )
         return self._parse_response(response)
+
+    def _request(self, method: str, path: str, **kwargs) -> requests.Response:
+        last_error = None
+        for attempt in range(self.RETRY_ATTEMPTS):
+            try:
+                return self.session.request(
+                    method,
+                    f"{config.GPT_API_BASE_URL}{path}",
+                    timeout=600,
+                    **kwargs,
+                )
+            except (requests.ConnectionError, requests.ChunkedEncodingError) as e:
+                last_error = e
+                if attempt == self.RETRY_ATTEMPTS - 1:
+                    break
+                time.sleep(2 * (attempt + 1))
+        raise last_error
 
     def _parse_response(self, response: requests.Response) -> dict:
         if response.status_code != 200:
@@ -111,11 +136,20 @@ class ImageService:
 
         url = first.get("url", "")
         if url:
-            img_resp = requests.get(url, timeout=300)
+            data_url = self._decode_data_url(url)
+            if data_url:
+                return data_url, url
+            img_resp = self.session.get(url, timeout=300)
             img_resp.raise_for_status()
             return img_resp.content, url
 
         raise RuntimeError("No image data (b64_json or url) in response")
+
+    def _decode_data_url(self, url: str) -> bytes | None:
+        match = re.match(r"^data:image/[^;]+;base64,(.+)$", url, re.DOTALL)
+        if not match:
+            return None
+        return base64.b64decode(match.group(1))
 
     def _normalize_images(self, image_sources) -> list[bytes]:
         if not isinstance(image_sources, list):
@@ -139,8 +173,19 @@ class ImageService:
         files = []
         for i, img_bytes in enumerate(images):
             field_name = "image" if i == 0 else "image[]"
-            files.append((field_name, (f"{prefix}{i + 1}.png", img_bytes, "image/png")))
+            files.append((field_name, (f"{prefix}{i + 1}.png", self._to_png(img_bytes), "image/png")))
         return files
+
+    def _to_png(self, img_bytes: bytes) -> bytes:
+        try:
+            with Image.open(BytesIO(img_bytes)) as img:
+                if img.mode not in ("RGB", "RGBA"):
+                    img = img.convert("RGBA")
+                output = BytesIO()
+                img.save(output, format="PNG")
+                return output.getvalue()
+        except UnidentifiedImageError:
+            return img_bytes
 
     def _save_to_temp(self, img_bytes: bytes) -> str:
         output_path = os.path.join(self.output_dir, f"gen_{os.getpid()}_{os.urandom(4).hex()}.png")

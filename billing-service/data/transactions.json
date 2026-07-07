@@ -1,5 +1,53 @@
 [
   {
+    "id": "TX_1783426060001_v6g2",
+    "userId": "825512163",
+    "type": "deduct",
+    "amount": 50,
+    "reason": "image_generation_sc_ref",
+    "createdAt": 1783426060001
+  },
+  {
+    "id": "TX_1783425910283_phab",
+    "userId": "825512163",
+    "type": "deduct",
+    "amount": 50,
+    "reason": "image_generation_sc",
+    "createdAt": 1783425910283
+  },
+  {
+    "id": "TX_1783425757634_9w0b",
+    "userId": "825512163",
+    "type": "refund",
+    "amount": 50,
+    "reason": "generation_failed",
+    "createdAt": 1783425757634
+  },
+  {
+    "id": "TX_1783425637330_yojy",
+    "userId": "825512163",
+    "type": "deduct",
+    "amount": 50,
+    "reason": "image_generation_sc_ref",
+    "createdAt": 1783425637330
+  },
+  {
+    "id": "TX_1783425377185_55rc",
+    "userId": "825512163",
+    "type": "refund",
+    "amount": 50,
+    "reason": "generation_failed",
+    "createdAt": 1783425377185
+  },
+  {
+    "id": "TX_1783425256995_e98j",
+    "userId": "825512163",
+    "type": "deduct",
+    "amount": 50,
+    "reason": "image_generation_sc_ref",
+    "createdAt": 1783425256995
+  },
+  {
     "id": "TX_1783419067994_7di3",
     "userId": "825512163",
     "type": "deduct",
