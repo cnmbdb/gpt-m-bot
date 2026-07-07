@@ -17,6 +17,7 @@ logger = logging.getLogger(__name__)
 
 class ImageService:
     RETRY_ATTEMPTS = 3
+    RETRY_STATUS_CODES = {520, 522, 523, 524}
 
     def __init__(self):
         self.output_dir = os.path.join(tempfile.gettempdir(), "codex-imagegen-service")
@@ -100,14 +101,28 @@ class ImageService:
 
     def _request(self, method: str, path: str, **kwargs) -> requests.Response:
         last_error = None
+        last_response = None
         for attempt in range(self.RETRY_ATTEMPTS):
             try:
-                return self.session.request(
+                response = self.session.request(
                     method,
                     f"{config.GPT_API_BASE_URL}{path}",
                     timeout=600,
                     **kwargs,
                 )
+                if response.status_code not in self.RETRY_STATUS_CODES:
+                    return response
+                last_response = response
+                logger.warning(
+                    "Image relay returned retryable status attempt=%d/%d path=%s status=%s",
+                    attempt + 1,
+                    self.RETRY_ATTEMPTS,
+                    path,
+                    response.status_code,
+                )
+                if attempt == self.RETRY_ATTEMPTS - 1:
+                    break
+                time.sleep(2 * (attempt + 1))
             except (
                 requests.exceptions.ConnectionError,
                 requests.exceptions.ChunkedEncodingError,
@@ -124,10 +139,16 @@ class ImageService:
                 if attempt == self.RETRY_ATTEMPTS - 1:
                     break
                 time.sleep(2 * (attempt + 1))
+        if last_response is not None:
+            return last_response
         raise last_error
 
     def _parse_response(self, response: requests.Response) -> dict:
         if response.status_code != 200:
+            if response.status_code == 524:
+                raise RuntimeError("图片中转站生成超时（HTTP 524），请稍后重试。")
+            if response.status_code in self.RETRY_STATUS_CODES:
+                raise RuntimeError(f"图片中转站暂时不可用（HTTP {response.status_code}），请稍后重试。")
             raise RuntimeError(f"Image relay API error {response.status_code}: {response.text[:200]}")
 
         data = response.json()

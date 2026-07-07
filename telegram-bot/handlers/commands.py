@@ -857,7 +857,7 @@ async def cmd_image_gen_sc(update: Update, context: ContextTypes.DEFAULT_TYPE, p
             billing.refund(user_id, cost, "generation_failed")
         except Exception:
             pass
-        await send_message(chat_id, f"❌ [DEBUG] 生成失败: {e}\n积分已退回，请稍后重试。")
+        await send_message(chat_id, f"❌ 图片生成失败: {e}\n积分已退回，请稍后重试。")
 
 
 async def cmd_image_gen_sc_with_ref(update: Update, context: ContextTypes.DEFAULT_TYPE, prompt: str, ref_images: list, model: str = None, explicit_user_id: str = None, explicit_chat_id: int = None):
