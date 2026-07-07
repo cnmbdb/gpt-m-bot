@@ -12,6 +12,7 @@ from services.storage.base import StorageBackend
 BASE_DIR = Path(__file__).resolve().parents[1]
 DATA_DIR = BASE_DIR / "data"
 CONFIG_FILE = BASE_DIR / "config.json"
+ENV_FILE = BASE_DIR / ".env"
 VERSION_FILE = BASE_DIR / "VERSION"
 
 
@@ -43,6 +44,27 @@ def _read_json_object(path: Path, *, name: str) -> dict[str, object]:
     except Exception:
         return {}
     return data if isinstance(data, dict) else {}
+
+
+def _load_dotenv(path: Path) -> None:
+    if not path.exists() or path.is_dir():
+        return
+    try:
+        lines = path.read_text(encoding="utf-8").splitlines()
+    except Exception:
+        return
+    for line in lines:
+        stripped = line.strip()
+        if not stripped or stripped.startswith("#") or "=" not in stripped:
+            continue
+        key, value = stripped.split("=", 1)
+        key = key.strip()
+        value = value.strip().strip('"').strip("'")
+        if key and key not in os.environ:
+            os.environ[key] = value
+
+
+_load_dotenv(ENV_FILE)
 
 
 def _load_settings() -> LoadedSettings:

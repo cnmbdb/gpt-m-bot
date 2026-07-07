@@ -13,7 +13,6 @@ IMAGE_COST = int(os.getenv("IMAGE_COST", "50"))
 IMAGE_COST_CONTINUE_EDIT = int(os.getenv("IMAGE_COST_CONTINUE_EDIT", "40"))
 IMAGE_COST_M2 = int(os.getenv("IMAGE_COST_M2", "50"))
 RECHARGE_RATE = int(os.getenv("RECHARGE_RATE", "100"))
-NEW_USER_BONUS = int(os.getenv("NEW_USER_BONUS", "100"))
 REFERRAL_BONUS = int(os.getenv("REFERRAL_BONUS", "300"))
 REFERRAL_MIN_RECHARGE = int(os.getenv("REFERRAL_MIN_RECHARGE", "10"))
 DEFAULT_IMAGE_MODEL = "gpt-m2"
@@ -64,7 +63,6 @@ WELCOME_ZH = f"""🎉 **AI 生图** — 发送「帮我画一个图」+ 你的�
 **计费说明：**
 • 1 USDT = {RECHARGE_RATE} 积分
 • 生图费用：AI = {IMAGE_COST} 积分/张
-• 新用户首次使用赠送 {NEW_USER_BONUS} 积分
 • 充值地址（TRC20）：`{TRC20_ADDRESS}`
 • 发送 `/recharge` 即可快速充值
 
@@ -86,7 +84,6 @@ WELCOME_EN = f"""🎉 **AI Image Generation** — Send 「Draw me a picture」+ 
 **Pricing:**
 • 1 USDT = {RECHARGE_RATE} credits
 • AI = {IMAGE_COST} credits/image
-• New users get {NEW_USER_BONUS} free credits
 • Top-up address (TRC20): `{TRC20_ADDRESS}`
 • Send `/recharge` to top up quickly
 
@@ -108,7 +105,6 @@ WELCOME_RU = f"""🎉 **AI Генерация изображений** — От�
 **Цены:**
 • 1 USDT = {RECHARGE_RATE} кредитов
 • AI = {IMAGE_COST} кредитов/изображение
-• Новые пользователи получают {NEW_USER_BONUS} бесплатных кредитов
 • Адрес для пополнения (TRC20): `{TRC20_ADDRESS}`
 • Отправьте `/recharge` для быстрого пополнения
 

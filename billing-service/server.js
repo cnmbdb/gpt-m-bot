@@ -30,7 +30,6 @@ const CONFIG = {
   trc20Address: process.env.TRC20_ADDRESS || '',
   rechargeRate: parseInt(process.env.RECHARGE_RATE || '100', 10),
   imageCost: parseInt(process.env.IMAGE_COST || '50', 10),
-  newUserBonus: parseInt(process.env.NEW_USER_BONUS || '100', 10),
   referralBonus: parseInt(process.env.REFERRAL_BONUS || '300', 10),
   referralMinRecharge: parseInt(process.env.REFERRAL_MIN_RECHARGE || '10', 10),
   pollInterval: 10000,
@@ -255,17 +254,12 @@ app.post('/claim-bonus', (req, res) => {
   if (!userId) return res.status(400).json({ error: 'userId required' });
 
   const user = getOrCreateUser(userId);
-  if (user.bonusClaimed) return res.status(400).json({ error: 'Bonus already claimed', claimed: true });
-
-  user.balance += CONFIG.newUserBonus;
-  user.bonusClaimed = true;
-  const data = loadData();
-  data.users[userId] = user;
-  saveData(data);
-
-  addTx(userId, 'bonus', CONFIG.newUserBonus, 'new user bonus');
-
-  res.json({ success: true, bonus: CONFIG.newUserBonus, newBalance: user.balance });
+  res.status(410).json({
+    error: 'New user bonus is disabled',
+    disabled: true,
+    claimed: Boolean(user.bonusClaimed),
+    balance: user.balance,
+  });
 });
 
 app.post('/add-balance', (req, res) => {
@@ -488,5 +482,5 @@ checkTronTransfers();
 app.listen(CONFIG.port, () => {
   console.log(`Billing service running on port ${CONFIG.port}`);
   console.log(`TRC20 address: ${CONFIG.trc20Address}`);
-  console.log(`1 USDT = ${CONFIG.rechargeRate} credits | ${CONFIG.imageCost} credits/image | ${CONFIG.newUserBonus} bonus credits`);
+  console.log(`1 USDT = ${CONFIG.rechargeRate} credits | ${CONFIG.imageCost} credits/image | new user bonus disabled`);
 });

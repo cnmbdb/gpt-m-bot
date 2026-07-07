@@ -45,9 +45,6 @@ class BillingService:
     def add_balance(self, user_id: str, amount: int) -> dict:
         return self._post("/add-balance", {"userId": user_id, "amount": amount})
 
-    def claim_bonus(self, user_id: str) -> dict:
-        return self._post("/claim-bonus", {"userId": user_id})
-
     def notify_transfer(self, order_id: str, tx_hash: str = "") -> dict:
         return self._post("/notify-transfer", {"orderId": order_id, "txHash": tx_hash})
 

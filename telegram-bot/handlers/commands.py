@@ -302,15 +302,8 @@ async def cmd_recharge(update: Update, context: ContextTypes.DEFAULT_TYPE):
     except Exception:
         balance = 0
 
-    try:
-        billing.claim_bonus(user_id)
-        bonus_msg = "✨ 新用户福利已发放（+100积分），可以先试试生图！"
-    except Exception:
-        bonus_msg = ""
-
     text = (
         f"💰 **当前余额:** {balance}\n\n"
-        f"{bonus_msg}\n"
         f"生图费用:50 积分/张 (1 USDT = 100 积分)\n\n"
         f"充值地址 (TRON TRC20):\n"
         f"`{config.TRC20_ADDRESS}`\n\n"
@@ -695,7 +688,7 @@ async def cmd_me(update: Update, context: ContextTypes.DEFAULT_TYPE):
         "recharge_complete": "充值到账",
         "deduct": "消费",
         "refund": "退款",
-        "bonus": "新用户奖励(100积分)",
+        "bonus": "历史新用户奖励",
     }
 
     text = (
@@ -737,8 +730,7 @@ async def cmd_help(update: Update, context: ContextTypes.DEFAULT_TYPE):
         f"💳 **收费标准**\n"
         f"• 首次生成图片: {config.IMAGE_COST} 积分/张\n"
         f"• 首次修改图片: {config.IMAGE_COST} 积分/张\n"
-        f"• 继续修改: {config.IMAGE_COST_CONTINUE_EDIT} 积分/次\n"
-        f"• 新用户赠送: {config.NEW_USER_BONUS} 积分\n\n"
+        f"• 继续修改: {config.IMAGE_COST_CONTINUE_EDIT} 积分/次\n\n"
         f"👤 **个人中心**\n"
         f"查看余额和交易记录\n\n"
         f"💡 **快捷命令**\n"

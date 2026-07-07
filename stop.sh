@@ -1,4 +1,5 @@
 #!/bin/bash
+launchctl remove gpt-huatu.billing 2>/dev/null || true
 launchctl remove gpt-huatu.telegram-bot 2>/dev/null || true
 
 if [[ -f "$(dirname "$0")/.pids" ]]; then

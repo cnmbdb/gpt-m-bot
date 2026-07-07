@@ -75,7 +75,6 @@ ADMIN_IDS=825512163,8277934317
 IMAGE_COST=50
 IMAGE_COST_CONTINUE_EDIT=40
 RECHARGE_RATE=100
-NEW_USER_BONUS=100
 REFERRAL_BONUS=300
 REFERRAL_MIN_RECHARGE=10
 TRC20_ADDRESS=your_trc20_wallet_address
@@ -168,7 +167,7 @@ Telegram 机器人 (Python)
 
 ### 3. 新用户福利
 
-- 首次充值后自动领取 100 积分
+- 已关闭，不再自动赠送积分
 
 ### 4. 邀请返现（/pdd）
 
@@ -216,7 +215,7 @@ Telegram 机器人 (Python)
 | 首次生成图片 | 50 积分/张 |
 | 首次修改图片 | 50 积分/张 |
 | 继续修改 | 40 积分/次 |
-| 新用户奖励 | 100 积分 |
+| 新用户奖励 | 已关闭 |
 | 推荐返现 | 被推荐人充值 ≥10 USDT 时，获得 300 积分 |
 | 充值有效期 | 订单创建后 15 分钟内有效 |
 
@@ -233,7 +232,7 @@ Telegram 机器人 (Python)
 | `/recharge` | POST | 创建充值订单（自动添加随机小数） |
 | `/order/:orderId` | GET | 查询订单状态 |
 | `/refund` | POST | 退款 |
-| `/claim-bonus` | POST | 领取新用户福利 |
+| `/claim-bonus` | POST | 已禁用，返回 410 |
 | `/bind-referrer` | POST | 绑定推荐人关系 |
 | `/referral/:userId` | GET | 推荐统计 |
 | `/transactions/:userId` | GET | 交易流水 |
@@ -266,7 +265,7 @@ Telegram 机器人 (Python)
 
 ## 管理员
 
-管理员不受限制（无限生图、新用户福利等）。
+管理员不受限制（无限生图等）。
 
 当前管理员：
 - `825512163`
