@@ -1,4 +1,5 @@
 import base64
+import json
 import logging
 import os
 import re
@@ -151,7 +152,12 @@ class ImageService:
                 raise RuntimeError(f"图片中转站暂时不可用（HTTP {response.status_code}），请稍后重试。")
             raise RuntimeError(f"Image relay API error {response.status_code}: {response.text[:200]}")
 
-        data = response.json()
+        try:
+            data = response.json()
+        except json.JSONDecodeError:
+            body = (response.text or "").strip()
+            snippet = body[:120] if body else "空响应"
+            raise RuntimeError(f"图片中转站返回了非 JSON 响应：{snippet}")
         if "error" in data:
             error = data["error"]
             raise RuntimeError(error.get("message", str(error)) if isinstance(error, dict) else str(error))
