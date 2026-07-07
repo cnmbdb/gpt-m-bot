@@ -7,7 +7,7 @@ import threading
 import time
 import os
 from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup, ReplyKeyboardMarkup, KeyboardButton
-from telegram.error import NetworkError, TimedOut
+from telegram.error import BadRequest, NetworkError, TimedOut
 from telegram.ext import ContextTypes
 
 import config
@@ -149,6 +149,13 @@ async def send_message(chat_id: int, text: str, reply_markup=None, parse_mode="M
                 chat_id=chat_id, text=text,
                 reply_markup=reply_markup, parse_mode=parse_mode,
             )
+        except BadRequest as e:
+            if parse_mode is not None and "Can't parse entities" in str(e):
+                return await telegram_bot.send_message(
+                    chat_id=chat_id, text=text,
+                    reply_markup=reply_markup, parse_mode=None,
+                )
+            raise
         except (NetworkError, TimedOut) as e:
             if attempt == MESSAGE_MAX_ATTEMPTS - 1:
                 logger.error(
@@ -900,22 +907,6 @@ async def cmd_image_gen_sc_with_ref(update: Update, context: ContextTypes.DEFAUL
             "last_image_data": img_data,
             "last_image_url": img_url,
         }
-
-        from urllib.parse import urlparse
-        gpt_api_host = urlparse(config.GPT_API_BASE_URL).netloc
-        if img_url and (gpt_api_host in img_url or "localhost" in img_url):
-            try:
-                parsed = urlparse(img_url)
-                local_path = os.path.join(config.GPT_API_IMAGES_DIR, parsed.path.lstrip("/images/").lstrip("/"))
-                if os.path.exists(local_path):
-                    await context.bot.send_photo(
-                        chat_id=chat_id, photo=open(local_path, 'rb'),
-                        caption=f"✅ {model_name} 参考图片已生成！消耗 {cost} 积分\n\n💡 如需继续修改，点击下方按钮并发送修改指令（消耗 40 积分）",
-                        reply_markup=continue_edit_keyboard(),
-                    )
-                    return
-            except Exception:
-                pass
 
         if img_data:
             from io import BytesIO

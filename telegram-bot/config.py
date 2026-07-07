@@ -2,7 +2,6 @@ import os
 import json
 
 BOT_TOKEN = os.getenv("TELEGRAM_BOT_TOKEN", "")
-OPENAI_API_KEY = os.getenv("OPENAI_API_KEY", "")
 
 BILLING_URL = os.getenv("BILLING_URL", "http://127.0.0.1:4313")
 
@@ -22,25 +21,27 @@ if not GPT_API_BASE_URL_RAW:
     raise RuntimeError(
         "\n❌ 启动失败: GPT_API_BASE_URL 未配置!\n"
         "请在 .env 文件中设置 GPT_API_BASE_URL 环境变量。\n"
-        "示例 (本地): GPT_API_BASE_URL=http://127.0.0.1:3000\n"
-        "示例 (远程): GPT_API_BASE_URL=https://paipai-huatu-api.txsw.top\n"
+        "示例: GPT_API_BASE_URL=https://osss.ai/v1\n"
     )
 GPT_API_BASE_URL = GPT_API_BASE_URL_RAW.rstrip("/")
-GPT_API_AUTH_KEY = os.getenv("GPT_API_AUTH_KEY", "chatgpt2api")
-_default_images_dir = os.path.join(os.path.dirname(__file__), "..", "gpt-api", "data", "images")
-GPT_API_IMAGES_DIR = os.getenv("GPT_API_IMAGES_DIR", _default_images_dir)
+GPT_API_AUTH_KEY = os.getenv("GPT_API_AUTH_KEY", "").strip()
+if not GPT_API_AUTH_KEY:
+    raise RuntimeError(
+        "\n❌ 启动失败: GPT_API_AUTH_KEY 未配置!\n"
+        "请在 .env 文件中设置中转站令牌，例如 GPT_API_AUTH_KEY=sk-...\n"
+    )
+GPT_API_IMAGE_MODEL = os.getenv("GPT_API_IMAGE_MODEL", "gpt-image-2").strip()
 
 IMAGE_MODELS = {
     "gpt-m2": {
         "name": "AI",
         "cost": IMAGE_COST,
         "quality": "high",
-        "provider": "local",
-        "local_model": "gpt-image-2",
+        "provider": "relay",
+        "api_model": GPT_API_IMAGE_MODEL,
     },
 }
 TRC20_ADDRESS = os.getenv("TRC20_ADDRESS", "")
-GEN_SCRIPT = os.path.join(os.path.dirname(__file__), "..", "billing-service", "gen-openclaw-style.js")
 DATA_DIR = os.path.join(os.path.dirname(__file__), "data")
 LANG_FILE = os.path.join(DATA_DIR, "language-preferences.json")
 

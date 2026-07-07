@@ -53,21 +53,28 @@ else
 fi
 echo ""
 
-echo "🖼️ 3. GPT API Proxy (Docker 端口 3000)"
+echo "🖼️ 3. Image Relay API"
 echo "------------------------------------------"
-DOCKER_STATUS=$(docker ps --filter "name=chatgpt2api" --format "{{.Status}}" 2>/dev/null)
-if [ -n "$DOCKER_STATUS" ]; then
-    echo "   ✅ Docker 容器运行中 ($DOCKER_STATUS)"
-else
-    echo "   ❌ Docker 容器未运行"
+if [ -z "$GPT_API_BASE_URL" ]; then
+    echo "   ❌ GPT_API_BASE_URL 未设置"
     all_ok=false
-fi
-
-GPT_HEALTH=$(curl -s -o /dev/null -w "%{http_code}" "${GPT_API_BASE_URL:-http://127.0.0.1:3000}/v1/models" 2>/dev/null)
-if [ "$GPT_HEALTH" = "401" ] || [ "$GPT_HEALTH" = "200" ]; then
-    echo "   ✅ API 响应正常 (HTTP $GPT_HEALTH)"
+elif [ -z "$GPT_API_AUTH_KEY" ]; then
+    echo "   ❌ GPT_API_AUTH_KEY 未设置"
+    all_ok=false
 else
-    echo "   ⚠️ API 响应异常 (HTTP $GPT_HEALTH)"
+    GPT_HEALTH=$(curl -s -o /dev/null -w "%{http_code}" \
+        -H "Authorization: Bearer ${GPT_API_AUTH_KEY}" \
+        "${GPT_API_BASE_URL%/}/models" 2>/dev/null)
+    if [ "$GPT_HEALTH" = "200" ]; then
+        echo "   ✅ API 可达 (HTTP $GPT_HEALTH)"
+        echo "   模型: ${GPT_API_IMAGE_MODEL:-gpt lmage2}"
+    elif [ "$GPT_HEALTH" = "401" ]; then
+        echo "   ❌ API 鉴权失败 (HTTP $GPT_HEALTH)，请检查 GPT_API_AUTH_KEY"
+        all_ok=false
+    else
+        echo "   ❌ API 响应异常 (HTTP $GPT_HEALTH)"
+        all_ok=false
+    fi
 fi
 echo ""
 

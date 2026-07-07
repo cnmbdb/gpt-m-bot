@@ -30,8 +30,12 @@ if [[ -z "$TELEGRAM_BOT_TOKEN" ]]; then
     echo "❌ 错误: TELEGRAM_BOT_TOKEN 未设置，请编辑 .env 文件"
     exit 1
 fi
-if [[ -z "$OPENAI_API_KEY" ]]; then
-    echo "❌ 错误: OPENAI_API_KEY 未设置，请编辑 .env 文件"
+if [[ -z "$GPT_API_BASE_URL" ]]; then
+    echo "❌ 错误: GPT_API_BASE_URL 未设置，请编辑 .env 文件"
+    exit 1
+fi
+if [[ -z "$GPT_API_AUTH_KEY" ]]; then
+    echo "❌ 错误: GPT_API_AUTH_KEY 未设置，请编辑 .env 文件"
     exit 1
 fi
 
@@ -86,7 +90,7 @@ if ! curl -s "http://127.0.0.1:${BILLING_PORT:-4313}/health" > /dev/null 2>&1; t
 fi
 
 cd "$SCRIPT_DIR/telegram-bot"
-TELEGRAM_BOT_TOKEN="$TELEGRAM_BOT_TOKEN" OPENAI_API_KEY="$OPENAI_API_KEY" python3 bot.py &
+TELEGRAM_BOT_TOKEN="$TELEGRAM_BOT_TOKEN" GPT_API_BASE_URL="$GPT_API_BASE_URL" GPT_API_AUTH_KEY="$GPT_API_AUTH_KEY" GPT_API_IMAGE_MODEL="$GPT_API_IMAGE_MODEL" python3 bot.py &
 BOT_PID=$!
 echo "   ✅ Telegram 机器人已启动 (PID: $BOT_PID)"
 echo "------------------------------------------"
@@ -119,9 +123,13 @@ check_billing() {
     curl -s -o /dev/null -w "%{http_code}" "http://127.0.0.1:${BILLING_PORT:-4313}/health" 2>/dev/null | grep -q "200"
 }
 
-# Docker GPT API
-check_docker() {
-    docker ps --filter "name=chatgpt2api" --format "{{.Names}}" 2>/dev/null | grep -q "chatgpt2api"
+# Image relay API
+check_image_relay() {
+    local status
+    status=$(curl -s -o /dev/null -w "%{http_code}" \
+        -H "Authorization: Bearer ${GPT_API_AUTH_KEY}" \
+        "${GPT_API_BASE_URL%/}/models" 2>/dev/null)
+    [ "$status" = "200" ]
 }
 
 # TRON API
@@ -137,11 +145,8 @@ check_service "Telegram Bot" check_bot || all_ok=false
 echo "💰 Billing Service:"
 check_service "Billing Service (${BILLING_PORT:-4313})" check_billing || all_ok=false
 
-echo "🖼️ GPT API Proxy (Docker):"
-if check_service "GPT API Docker" check_docker; then
-    GPT_STATUS=$(docker ps --filter "name=chatgpt2api" --format "{{.Status}}" 2>/dev/null)
-    echo "      状态: $GPT_STATUS"
-fi
+echo "🖼️ Image Relay API:"
+check_service "Image Relay API" check_image_relay || all_ok=false
 
 echo "🔗 TRON API:"
 check_service "Trongrid API" check_tron || all_ok=false

@@ -33,7 +33,7 @@ async def cmd_image_gen_sc_with_ref(...):
 并发场景：
 - 用户发送第 1 张图（多张作为 album）→ 触发 `cmd_image_gen_sc_with_ref`（耗时 ~60s+）
 - 用户紧接着又发送新的图 / 重复点击 `/sc` → 又触发一次 `cmd_image_gen_sc_with_ref`
-- 两个生成任务并发跑 → gpt-api 队列拥塞 / Telegram 上传慢
+- 两个生成任务并发跑 → 图片中转站响应变慢 / Telegram 上传慢
 - 第二次调用 send_photo 超过 60s → `telegram.error.TimedOut`
 
 ### 根因 2: Telegram 请求超时设置过小
@@ -41,7 +41,7 @@ async def cmd_image_gen_sc_with_ref(...):
 `bot.py` 中 `app.bot.request.timeout = 60`（60 秒），对于：
 - 多张参考图下载（3 张 × 60s = 180s）
 - 大图上传到 Telegram（5MB+ 图片在弱网下可能 > 60s）
-- gpt-api 慢响应（60~90s）
+- 图片中转站慢响应（60~90s）
 
 60 秒太短，极易触发 `TimedOut`。
 
@@ -129,8 +129,8 @@ T0+1s album 收集完毕，调用 cmd_image_gen_sc_with_ref
 T0+1s mark_processing() = True  → step = "processing"
 T0+2s 发送"🎨 正在生成..."
 T0+2s 调用 billing.deduct() 扣 50 积分
-T0+3s 调用 gpt-api /v1/images/generations (timeout=600s)
-T0+60s  gpt-api 返回图片 URL
+T0+3s 调用图片中转站 /v1/images/generations (timeout=600s)
+T0+60s  图片中转站返回图片 URL
 T0+61s  下载图片 bytes (timeout=120s)
 T0+62s  send_photo 上传到 Telegram (timeout=180s)
 T0+63s  上传成功，用户看到图片 + "✅ AI 参考图片已生成！"

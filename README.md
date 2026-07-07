@@ -1,6 +1,6 @@
 # Telegram AI 生图机器人
 
-基于 Python + Node.js 的 Telegram 机器人，支持 USDT/TRC20 充值（自动链上检测）、积分计费、GPT Image 2 图片生成、多语言界面、邀请返现、以及多轮图片编辑功能。
+基于 Python + Node.js 的 Telegram 机器人，支持 USDT/TRC20 充值（自动链上检测）、积分计费、中转站图片生成、多语言界面、邀请返现、以及多轮图片编辑功能。
 
 ---
 
@@ -26,9 +26,6 @@ gpt-huatu/
 │   │   ├── language.py         # 语言偏好管理
 │   │   └── image.py            # 图片生成服务
 │   └── data/
-├── gpt-api/                     # 本地 gpt-image-2 反代服务 (chatgpt2api Docker)
-│   ├── docker-compose.yml
-│   └── .env
 ├── .env                         # 环境变量
 ├── start.sh                     # 一键启动脚本（含健康检查）
 ├── stop.sh                      # 停止脚本
@@ -42,7 +39,6 @@ gpt-huatu/
 
 - Node.js >= 16
 - Python >= 3.10
-- Docker (用于 gpt-api 本地反代服务)
 - USDT (TRC20) 用于充值
 
 ---
@@ -66,10 +62,10 @@ gpt-huatu/
 
 ```bash
 TELEGRAM_BOT_TOKEN=your_bot_token_here
-OPENAI_API_KEY=your_openai_api_key_here
 BILLING_URL=http://127.0.0.1:4313
-GPT_API_BASE_URL=http://127.0.0.1:3000
-GPT_API_AUTH_KEY=chatgpt2api
+GPT_API_BASE_URL=https://osss.ai/v1
+GPT_API_AUTH_KEY=sk-your-relay-token
+GPT_API_IMAGE_MODEL=gpt-image-2
 TRONGRID_API_KEY=your_trongrid_api_key_here
 ADMIN_IDS=825512163,8277934317
 IMAGE_COST=50
@@ -79,7 +75,6 @@ REFERRAL_BONUS=300
 REFERRAL_MIN_RECHARGE=10
 TRC20_ADDRESS=your_trc20_wallet_address
 BILLING_PORT=4313
-# GPT_API_IMAGES_DIR=  # 不设则自动用 ../gpt-api/data/images 相对路径
 ```
 
 ---
@@ -93,30 +88,28 @@ Telegram 机器人 (Python)
        ↓
   ┌────┴────┐
   ↓         ↓
-计费服务    GPT API 本地反代
-(Node.js)   (chatgpt2api Docker)
-端口:4313   端口:3000
+计费服务    图片中转站 API
+(Node.js)   (OpenAI-compatible)
+端口:4313   远程 HTTPS
               ↓
-         图片生成后保存到本地目录
-         /gpt-api/data/images/
+         返回 b64_json 或图片 URL
               ↓
-         机器人直接读本地文件
+         机器人发送图片字节
          发送给用户（无需网络下载）
 ```
 
 - **telegram-bot**: 处理用户交互、扣费、协调
 - **billing-service**: 用户余额、订单、交易记录、TRON 自动轮询检测
-- **gpt-api**: 本地运行 chatgpt2api，通过 ChatGPT 账号调用 gpt-image-2，图片保存到 `data/images/` 目录供 bot 直接读取
+- **图片中转站 API**: 提供 OpenAI 兼容的 `/images/generations` 和 `/images/edits` 接口（base URL 已包含 `/v1`）
 
 ---
 
-## 启动服务（共 3 个）
+## 启动服务（共 2 个）
 
 | 服务 | 技术栈 | 端口 | 启动命令 |
 |------|--------|------|----------|
 | Telegram Bot | Python | - | `python3 bot.py` |
 | Billing Service | Node.js | 4313 | `node server.js` |
-| GPT API Proxy | Docker | 3000 | `docker start chatgpt2api` |
 
 ---
 
@@ -130,7 +123,7 @@ Telegram 机器人 (Python)
 # 🔍 启动健康检查...
 # 📡 Telegram Bot:        ✅
 # 💰 Billing Service:     ✅
-# 🖼️ GPT API Docker:      ✅
+# 🖼️ Image Relay API:     ✅
 # 🔗 TRON API:            ✅
 # 🎉 所有服务已启动并正常！
 ```
@@ -145,7 +138,7 @@ Telegram 机器人 (Python)
 
 ## 功能一览
 
-### 1. AI 生图（GPT Image 2）
+### 1. AI 生图（中转站模型）
 
 点击底部「🎨 AI 生图」按钮：
 - **生成图片**：输入描述 → 生成图片（消耗 50 积分）
@@ -300,17 +293,18 @@ Telegram 机器人 (Python)
    │  └─ 支持单张或多张参考图片
    └─ 「✏️ 修改图片」→ 发送图片+描述 → 修改图片（50积分）
       └─ 支持单张或多张图片同时修改
-3. gpt-api 生成图片 → 保存到本地 /gpt-api/data/images/
-4. 机器人直接读取本地文件路径 → 发送给 Telegram 用户
+3. 图片中转站生成图片 → 返回 b64_json 或图片 URL
+4. 机器人获取图片字节 → 发送给 Telegram 用户
 5. 图片生成后，点击「✏️ 继续修改图片」
 6. 输入修改指令 → 修改图片（40积分/次）
 7. 重复步骤 5-6 可无限次继续修改
 ```
 
-**本地文件流程（无需 ngrok）：**
-- gpt-api 生成图片后，返回 URL: `http://127.0.0.1:3000/images/2026/05/05/xxx.png`
-- 机器人将 URL 路径映射到本地: `/gpt-api/data/images/2026/05/05/xxx.png`
-- 直接用本地文件路径发送给 Telegram，无网络下载延迟
+图片中转站需要兼容 OpenAI 图片接口：
+- 文生图：`POST /images/generations`
+- 图生图 / 图片编辑：`POST /images/edits`
+- 鉴权：`Authorization: Bearer $GPT_API_AUTH_KEY`
+- 默认模型：`gpt-image-2`，可通过 `GPT_API_IMAGE_MODEL` 覆盖
 
 ---
 
@@ -330,14 +324,12 @@ billing-service 每 15 秒轮询 trongrid.io
 
 ---
 
-## gpt-api 本地反代服务
+## 图片中转站配置
 
-位于 `gpt-api/` 目录，运行 chatgpt2api Docker 容器：
+项目不再内置本地图片代理服务。部署时只需要在 `.env` 中配置中转站：
 
-- 地址：`http://127.0.0.1:3000`
-- 鉴权 key：`chatgpt2api`
-- 模型：`gpt-image-2`
-- 图片存储：`/gpt-api/data/images/`（Docker 挂载到宿主机）
-- `config.json` 中 `base_url` 设为 `http://127.0.0.1:3000`，返回本地文件路径供 bot 直接读取
-
-需要导入有效的 ChatGPT Plus 账号才能使用。
+```bash
+GPT_API_BASE_URL=https://osss.ai/v1
+GPT_API_AUTH_KEY=sk-your-relay-token
+GPT_API_IMAGE_MODEL=gpt-image-2
+```
