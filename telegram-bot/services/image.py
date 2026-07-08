@@ -18,7 +18,7 @@ logger = logging.getLogger(__name__)
 
 class ImageService:
     RETRY_ATTEMPTS = 3
-    RETRY_STATUS_CODES = {520, 522, 523, 524}
+    RETRY_STATUS_CODES = {500, 502, 503, 504, 520, 522, 523, 524}
 
     def __init__(self):
         self.output_dir = os.path.join(tempfile.gettempdir(), "codex-imagegen-service")
@@ -146,6 +146,8 @@ class ImageService:
 
     def _parse_response(self, response: requests.Response) -> dict:
         if response.status_code != 200:
+            if response.status_code == 500:
+                raise RuntimeError("图片中转站上游请求失败（HTTP 500），请稍后重试。")
             if response.status_code == 524:
                 raise RuntimeError("图片中转站生成超时（HTTP 524），请稍后重试。")
             if response.status_code in self.RETRY_STATUS_CODES:
